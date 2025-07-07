@@ -32,9 +32,8 @@ def message_keyboard():
 
 def cancel_sending_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [btn('Сохранить и выйти в главное меню', "save")],
-        [btn('Вернуться и дополнить', "collect_msg")],
-        [btn('Выйти в главное меню без сохранения', "main")]
+        [btn('Сохранить и выйти в главное меню', "save"), btn('Выйти без сохранения', "main")],
+        [btn('Вернуться и дополнить', "collect_msg")]
     ])
 
 
