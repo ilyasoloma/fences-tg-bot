@@ -12,10 +12,12 @@ class Config:
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
     ADMIN_LABEL = os.getenv("ADMIN_LABEL")
 
-    USER_SLUG_BYTE_LIMIT = 64
+    ALIAS_BYTE_LIMIT = 64
+    LOG_FILE = os.getenv("LOG_FILE")
+    LOG_DIR = os.path.dirname(LOG_FILE)
+    LOG_LEVEL = os.getenv("LOG_LEVEL")
 
     # Сообщения
-    # Сбщ в менюшках
     START_CMD = 'Что вы хотите сделать?'
     SELECT_RECIPIENT = 'На чьем заборчике будем писать?'
     WRITE_ALIAS = "Представься?"
