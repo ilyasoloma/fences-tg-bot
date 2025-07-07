@@ -15,7 +15,6 @@ async def error_handler(event: ErrorEvent):
 async def main():
     db = FencesMongo()
     await db.initialize_database()
-    logger.info("🚀 DB is connected")
 
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(main_router)
@@ -27,5 +26,4 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-
     asyncio.run(main())

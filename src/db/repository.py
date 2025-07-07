@@ -10,11 +10,11 @@ from src.utils.logger import logger
 class FencesMongo:
     def __init__(self):
         self.__config = config
-
         client: AsyncIOMotorClient = AsyncIOMotorClient(config.MONGO_DB_URL)
         self.db: AsyncIOMotorDatabase = client.fences
 
     async def initialize_database(self) -> None:
+        logger.info("🍁 Starting initialize DB ")
         collections = await self.db.list_collection_names()
         if 'fences_bot_settings' not in collections:
             logger.info('Created collection "fences_bot_settings"')
@@ -29,6 +29,7 @@ class FencesMongo:
             await self.add_admin(username=self.__config.ADMIN_USERNAME, label=self.__config.ADMIN_LABEL)
 
     async def get_settings(self) -> Optional[Dict[str, Any]]:
+        logger.info(f'🍁 Getting settings')
         return await self.db.fences_bot_settings.find_one({"name": "settings"})
 
     async def add_admin(self, username: str, label: Optional[str] = None) -> None:
@@ -37,7 +38,7 @@ class FencesMongo:
             await self.db.fences_bot_settings.update_one({"name": "settings"}, {"$addToSet": {"admins": username}})
             await self.add_member(username, label)
         else:
-            logger.info(f'The admin {username} has already been added')
+            logger.info(f'🍁 The admin {username} has already been added')
 
     async def add_member(self, username: str, label: str) -> None:
         existing = await self.db.fences_bot_messages.find_one({"username": username})
