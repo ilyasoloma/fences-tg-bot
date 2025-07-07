@@ -24,7 +24,7 @@ async def get_contacts() -> Dict[str, str]:
     return await db.get_contacts()
 
 
-def validate_alias(alias: str, max_bytes: int = config.USER_SLUG_BYTE_LIMIT) -> tuple[bool, str | None]:
+def validate_alias(alias: str, max_bytes: int = config.ALIAS_BYTE_LIMIT) -> tuple[bool, str | None]:
     alias = alias.strip()
     try:
         encoded = alias.encode("utf-8")
