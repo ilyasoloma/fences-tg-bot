@@ -8,7 +8,15 @@ from src.utils.logger import logger
 
 
 class FencesMongo:
-    def __init__(self):
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(FencesMongo, cls).__new__(cls)
+            cls._instance._init()
+        return cls._instance
+
+    def _init(self):
         self.__config = config
         client: AsyncIOMotorClient = AsyncIOMotorClient(config.MONGO_DB_URL)
         self.db: AsyncIOMotorDatabase = client.fences
@@ -29,7 +37,6 @@ class FencesMongo:
             await self.add_admin(username=self.__config.ADMIN_USERNAME, label=self.__config.ADMIN_LABEL)
 
     async def get_settings(self) -> Optional[Dict[str, Any]]:
-        logger.info(f'🍁 Getting settings')
         return await self.db.fences_bot_settings.find_one({"name": "settings"})
 
     async def add_admin(self, username: str, label: Optional[str] = None) -> None:
@@ -51,6 +58,10 @@ class FencesMongo:
     async def get_members(self) -> List[dict]:
         settings = await self.get_settings()
         return settings.get("members", []) if settings else []
+
+    async def get_admins(self) -> List[dict]:
+        settings = await self.get_settings()
+        return settings.get("admins", []) if settings else []
 
     async def save_message(self, recipient: str, alias: str, messages: List[Any]) -> None:
         message_entry = models.MessageEntry(alias=alias, parts=messages).dict()

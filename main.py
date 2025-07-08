@@ -4,7 +4,8 @@ from aiogram.types import ErrorEvent
 
 from src.bot import bot
 from src.db.repository import FencesMongo
-from src.handlers import router as main_router
+from src.middleware.access_control import AccessControlMiddleware
+from src.routers import router
 from src.utils.logger import logger
 
 
@@ -17,8 +18,11 @@ async def main():
     await db.initialize_database()
 
     dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(main_router)
+    dp.include_router(router)
+
     dp.errors.register(error_handler)
+    dp.message.middleware(AccessControlMiddleware())
+    dp.callback_query.middleware(AccessControlMiddleware())
 
     logger.info("🚀 Bot is running")
     await dp.start_polling(bot)
@@ -26,4 +30,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

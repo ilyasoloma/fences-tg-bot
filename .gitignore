@@ -2,4 +2,5 @@ venv
 .env
 bot.log
 user_data
+.logs
 .idea
