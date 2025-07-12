@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from src.services import get_contacts, is_admin
+from src.services import get_contacts, is_admin, is_eol_date
 
 
 def btn(text, data):
@@ -8,7 +8,10 @@ def btn(text, data):
 
 
 async def main_menu(username: str):
-    base = [[btn("✏️ Написать", "write")], [btn("📬 Посмотреть", "view")]]
+    base = []
+    if not await is_eol_date():
+        base.append([btn("✏️ Написать", "write")])
+    base.append([btn("📬 Посмотреть", "view")])
     if await is_admin(username):
         base.append([btn("⚙ Управление", "admin")])
     return InlineKeyboardMarkup(inline_keyboard=base)
@@ -54,6 +57,7 @@ def admin_panel_keyboad():
                                                   btn("➖ Удалить участника", "admin_remove_member")],
                                                  [btn('👨‍🚀 Выдать права администратора', 'add_root'),
                                                   btn("🤐 Отозвать права администратора", "delete_root")],
+                                                 [btn('⏱️Изменить время действия бота', 'set_datetime')],
                                                  [btn("🔙 Назад", "back")]])
 
 

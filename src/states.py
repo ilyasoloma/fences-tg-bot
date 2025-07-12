@@ -9,6 +9,7 @@ class AdminState(StatesGroup):
     removing_user = State()
     add_root = State()
     delete_root = State()
+    set_datetime = State()
 
 
 class Wall(StatesGroup):

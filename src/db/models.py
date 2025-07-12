@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Literal
 from pydantic import BaseModel
 
@@ -11,6 +12,7 @@ class UserEntry(BaseModel):
 class Settings(BaseModel):
     name: str = "settings"
     members: List[UserEntry] = []
+    eol_datetime: datetime | None = None
 
 
 class MessageEntry(BaseModel):

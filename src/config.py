@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -8,6 +9,10 @@ load_dotenv()
 class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN")
     MONGO_DB_URL = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017")
+    DATETIME_PATTERN = '%d.%m.%Y %H:%M:%S'
+    EOL_DATETIME = os.getenv('EOL_DATETIME', None)
+    if EOL_DATETIME is not None:
+        EOL_DATETIME = datetime.strptime(EOL_DATETIME.replace('_', ' '), DATETIME_PATTERN)
 
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
     ADMIN_LABEL = os.getenv("ADMIN_LABEL")
@@ -42,6 +47,6 @@ class Config:
     ENTER_ADD_USERNAME = "Введите username (без @):"
     ENTER_ADD_ALIAS = "Введите отображаемое имя:"
     ADDING_USER = 'Добавление участника...'
-
+    SET_DATETIME_MSG = 'Введите дату и время в формате ДД.ММ.ГГГГ ЧЧ:ММ:СС'
 
 config = Config()

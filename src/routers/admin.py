@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 
 from src.config import config
 from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard
-from src.services import is_admin, get_users_by_role, remove_user, add_user, set_admin_flag
+from src.services import is_admin, get_users_by_role, remove_user, add_user, set_admin_flag, set_datetime
 from src.states import AdminState
 from src.utils.static import validate_alias
 
@@ -119,3 +119,18 @@ async def delete_user_root(callback: CallbackQuery, state: FSMContext):
     await set_admin_flag(alias=alias, admin_flag=False)
     await callback.message.answer(f"✅ {alias} теперь обычный участник.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
+
+
+@router.callback_query(F.data == 'set_datetime')
+async def set_datetime_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(config.SET_DATETIME_MSG)
+    await state.set_state(AdminState.set_datetime)
+
+
+@router.message(AdminState.set_datetime)
+async def success_set_datetime(msg: Message, state: FSMContext):
+    await msg.answer('Применение...')
+    datetime_str = msg.text
+    await set_datetime(datetime_str)
+    await msg.answer(f'Время действия бота изменено на: {datetime_str}', reply_markup=admin_panel_keyboad())
+    await state.clear()

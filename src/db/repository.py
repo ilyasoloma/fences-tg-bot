@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
@@ -26,7 +27,9 @@ class FencesMongo:
         collections = await self.db.list_collection_names()
         if 'fences_bot_settings' not in collections:
             logger.info('Created collection "fences_bot_settings"')
-            await self.db.fences_bot_settings.insert_one(models.Settings().model_dump())
+            settings = models.Settings().dict()
+            settings['eol_datetime'] = self.__config.EOL_DATETIME
+            await self.db.fences_bot_settings.insert_one(settings)
 
         if 'fences_bot_messages' not in collections:
             logger.info('Created collection "fences_bot_messages"')
@@ -92,3 +95,16 @@ class FencesMongo:
             username = await self.get_username_by_alias(alias=alias)
         self.db.fences_bot_settings.update_one({"name": "settings"}, {'$pull': {'members': {'username': username}}})
         self.db.fences_bot_messages.delete_one({'username': username})
+
+    async def set_eol_datetime(self, new_datetime: datetime):
+        current_datetime = datetime.now()
+        if current_datetime < new_datetime:
+            pass
+        self.db.fences_bot_settings.update_one({"name": "settings"},
+                                               {'$set': {'eol_datetime': new_datetime}
+                                                })
+
+
+    async def get_eol_datetime(self):
+        settings = await self.get_settings()
+        return settings['eol_datetime']

@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import List, Dict
 
+from src.config import config
 from src.db.repository import FencesMongo
 
 db = FencesMongo()
@@ -74,3 +76,12 @@ async def remove_user(alias: str):
 
 async def set_admin_flag(admin_flag: bool, username: str | None = None, alias: str | None = None):
     await db.set_admin_flag(admin_flag=admin_flag, username=username, alias=alias)
+
+
+async def set_datetime(user_datetime: str):
+    prepared_datetime = datetime.strptime(user_datetime, config.DATETIME_PATTERN)
+    await db.set_eol_datetime(prepared_datetime)
+
+async def is_eol_date():
+    eol_datetime = await db.get_eol_datetime()
+    return eol_datetime < datetime.now()
