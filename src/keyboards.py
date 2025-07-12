@@ -19,7 +19,7 @@ async def recipient_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[[btn(name, name)] for name in contacts] + [[btn("🔙 Назад", "back")]])
 
 
-def back_keyboard(data:str = 'back'):
+def back_keyboard(data: str = 'back'):
     return InlineKeyboardMarkup(inline_keyboard=[[btn(f"🔙 Назад", data)]])
 
 
@@ -50,19 +50,14 @@ def back_to_board_keyboard():
 
 
 def admin_panel_keyboad():
-    return InlineKeyboardMarkup(inline_keyboard=[[btn("➕ Добавить участника", "admin_add")],
-                                                 [btn("➖ Удалить участника", "admin_remove_member")],
-                                                 [btn("✉️ Написать сообщение", "admin_send_message")],
+    return InlineKeyboardMarkup(inline_keyboard=[[btn("➕ Добавить участника", "admin_add"),
+                                                  btn("➖ Удалить участника", "admin_remove_member")],
+                                                 [btn('👨‍🚀 Выдать права администратора', 'add_root'),
+                                                  btn("🤐 Отозвать права администратора", "delete_root")],
                                                  [btn("🔙 Назад", "back")]])
 
 
-def admin_ask_user_type_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[[btn("👤 Участник", "add_user")],
-                                                 [btn("🛡 Админ", "add_admin")],
-                                                 [btn("🔙 Назад", "admin_back")]])
-
-
 async def choose_user_to_remove_keyboard(usernames):
-    rows = [[btn(f"❌ {u}", f"rm_user:{u}")] for u in usernames.keys()]
+    rows = [[btn(f"{u}", f"rm_user:{u}")] for u in usernames]
     rows.append([btn("🔙 Назад", "admin")])
     return InlineKeyboardMarkup(inline_keyboard=rows)

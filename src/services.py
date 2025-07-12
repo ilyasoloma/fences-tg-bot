@@ -11,8 +11,11 @@ async def is_allowed(username: str) -> bool:
 
 
 async def is_admin(username: str) -> bool:
-    settings = await db.get_settings()
-    return username in settings.get("admins", [])
+    admin_list = await db.get_admins()
+    if not admin_list:
+        return False
+    admin_username_list = [usr['username'] for usr in admin_list]
+    return username in admin_username_list
 
 
 async def save_board(user_label: str, sender: str, chunks: List[str]):
@@ -28,26 +31,14 @@ async def get_contacts(type_users: str = 'all') -> Dict[str, str]:
     if type_users == 'all':
         return await db.get_contacts()
     elif type_users == 'members':
-        admins = await db.get_admins()
-        members = await db.get_members()
-        result = {}
-        for member in members:
-            if member['username'] not in admins:
-                result[member['label']] = member['username']
-        return result
+        members = await db.get_only_members()
+        return {member["label"]: member["username"] for member in members}
     else:
         admins = await db.get_admins()
-        members = await db.get_members()
-        result = {}
-        for member in members:
-            if member['username'] in admins:
-                result[member['label']] = admins
-        return result
+        return {admin["label"]: admin["username"] for admin in admins}
 
 
-async def add_user(username: str, label: str, role: str) -> tuple[bool, str]:
-    from src.db.models import UserEntry
-
+async def add_user(username: str, label: str, role: str) -> tuple[bool, str | None]:
     # Проверка username и label на дубликаты
     settings = await db.get_settings()
     usernames = [u["username"] for u in settings.get("members", [])]
@@ -59,25 +50,27 @@ async def add_user(username: str, label: str, role: str) -> tuple[bool, str]:
     if label in labels:
         return False, "❌ Такое отображаемое имя уже используется"
 
-    entry = UserEntry(username=username, label=label)
-
-    if role == "admin":
-        await db.add_admin(username=username, label=label)
-    else:
-        await db.add_member(username=username, label=label)
+    await db.add_member(username=username, label=label, is_admin=role == "admin")
 
     return True, None
 
 
-async def get_users_by_role(role: str) -> list[str]:
-    settings = await db.get_settings()
+async def get_users_by_role(role: str, returning_type: str = 'label') -> list[str]:
     if role == "admin":
-        return settings["admins"]
+        admins = await db.get_admins()
+        return [a[returning_type] for a in admins]
     elif role == "member":
-        all_members = [m["username"] for m in settings.get("members", [])]
-        return [u for u in all_members if u not in settings["admins"]]
+        users = await db.get_only_members()
+        return [a[returning_type] for a in users]
+    elif role == 'all':
+        users = await db.get_all_members()
+        return [a[returning_type] for a in users]
     return []
 
 
-async def remove_user(username: str):
-    await db.remove_user(username)
+async def remove_user(alias: str):
+    await db.remove_user(alias=alias)
+
+
+async def set_admin_flag(admin_flag: bool, username: str | None = None, alias: str | None = None):
+    await db.set_admin_flag(admin_flag=admin_flag, username=username, alias=alias)

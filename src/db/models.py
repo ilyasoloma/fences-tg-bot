@@ -4,13 +4,13 @@ from pydantic import BaseModel
 
 class UserEntry(BaseModel):
     username: str  # Telegram username (без @)
-    label: str     # Отображаемое имя (например, "Маша 🌟")
+    label: str     # Отображаемое имя
+    is_admin: bool
 
 
 class Settings(BaseModel):
     name: str = "settings"
-    users: List[UserEntry] = []
-    admins: List[str] = []  # список username-ов
+    members: List[UserEntry] = []
 
 
 class MessageEntry(BaseModel):
@@ -19,5 +19,5 @@ class MessageEntry(BaseModel):
 
 
 class MessageBoard(BaseModel):
-    username: str  # username получателя
+    username: str
     messages: List[MessageEntry] = []

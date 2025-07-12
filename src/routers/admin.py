@@ -3,8 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.config import config
-from src.keyboards import admin_panel_keyboad, admin_ask_user_type_keyboard, choose_user_to_remove_keyboard
-from src.services import is_admin, get_users_by_role, remove_user, add_user
+from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard
+from src.services import is_admin, get_users_by_role, remove_user, add_user, set_admin_flag
 from src.states import AdminState
 from src.utils.static import validate_alias
 
@@ -22,15 +22,7 @@ async def admin_panel(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "admin_add")
-async def ask_user_type(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text(config.ADD_USER_ROLE, reply_markup=admin_ask_user_type_keyboard())
-    await state.set_state(AdminState.adding_user_type)
-
-
-@router.callback_query(AdminState.adding_user_type, F.data.startswith("add_"))
 async def ask_username(callback: CallbackQuery, state: FSMContext):
-    role = callback.data.split("_")[-1]
-    await state.update_data(role=role)
     await callback.message.edit_text(config.ENTER_ADD_USERNAME)
     await state.set_state(AdminState.adding_username)
 
@@ -47,7 +39,6 @@ async def save_new_user(msg: Message, state: FSMContext):
     await msg.answer(config.ADDING_USER)
     data = await state.get_data()
     username = data["username"]
-    role = data["role"]
     label = msg.text.strip()
 
     valid, error = validate_alias(label)
@@ -55,30 +46,22 @@ async def save_new_user(msg: Message, state: FSMContext):
         await msg.answer(f"⚠️ {error}")
         return
 
-    success, err = await add_user(username, label, role)
+    success, err = await add_user(username, label, role='member')
     if not success:
         await msg.answer(err)
         return
 
-    await msg.answer(f"✅ Пользователь @{username} добавлен как {role}.", reply_markup=admin_panel_keyboad())
+    await msg.answer(f"✅ Пользователь @{username} добавлен", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "admin_remove_member")
-async def choose_removal_type(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("Кого вы хотите удалить?", reply_markup=admin_ask_user_type_keyboard())
-    await state.set_state(AdminState.removing_user_type)
-
-
-@router.callback_query(AdminState.removing_user_type, F.data.in_({"rm_member", "rm_admin"}))
 async def list_users_to_remove(callback: CallbackQuery, state: FSMContext):
-    role = callback.data.split("_")[1]
-    await state.update_data(role=role)
-    usernames = await get_users_by_role(role)
+    usernames = await get_users_by_role('all')
 
     if not usernames:
-        await callback.message.edit_text(f"❌ Нет {role}ов для удаления.")
-        await state.set_state(AdminState.choosing_action)
+        await callback.message.edit_text(f"❌ Нет участников для удаления")
+        await state.clear()
         return
 
     await callback.message.edit_text("Выберите пользователя для удаления:",
@@ -91,4 +74,48 @@ async def confirm_user_removal(callback: CallbackQuery, state: FSMContext):
     username = callback.data.split(":", 1)[1]
     await remove_user(username)
     await callback.message.answer(f"✅ Пользователь @{username} удалён.", reply_markup=admin_panel_keyboad())
+    await state.set_state(AdminState.choosing_action)
+
+
+@router.callback_query(AdminState.choosing_action, F.data == "add_root")
+async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
+    usernames = await get_users_by_role('member')
+
+    if not usernames:
+        await callback.message.edit_text(f"❌ Ты че сука охуел? У тебя блядь все админы")
+        await state.clear()
+        return
+
+    await callback.message.edit_text("Выберите будущего админа",
+                                     reply_markup=await choose_user_to_remove_keyboard(usernames))
+    await state.set_state(AdminState.add_root)
+
+
+@router.callback_query(AdminState.choosing_action, F.data == "delete_root")
+async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
+    usernames = await get_users_by_role('admin')
+
+    if not usernames:
+        await callback.message.edit_text(f"❌ Ты че сука охуел? У тебя блядь все участники")
+        await state.clear()
+        return
+
+    await callback.message.edit_text("Выберите бывшего админа",
+                                     reply_markup=await choose_user_to_remove_keyboard(usernames))
+    await state.set_state(AdminState.delete_root)
+
+
+@router.callback_query(AdminState.add_root, F.data.startswith("rm_user:"))
+async def confirm_user_root(callback: CallbackQuery, state: FSMContext):
+    alias = callback.data.split(":", 1)[1]
+    await set_admin_flag(alias=alias, admin_flag=True)
+    await callback.message.answer(f"✅ {alias} теперь админ.", reply_markup=admin_panel_keyboad())
+    await state.set_state(AdminState.choosing_action)
+
+
+@router.callback_query(AdminState.delete_root, F.data.startswith("rm_user:"))
+async def delete_user_root(callback: CallbackQuery, state: FSMContext):
+    alias = callback.data.split(":", 1)[1]
+    await set_admin_flag(alias=alias, admin_flag=False)
+    await callback.message.answer(f"✅ {alias} теперь обычный участник.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
