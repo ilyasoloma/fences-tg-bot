@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 
 from src.config import config
 from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard
-from src.services import is_admin, get_users_by_role, remove_user, add_user, set_admin_flag, set_datetime
+from src.services import FencesService
 from src.states import AdminState
 from src.utils.static import validate_alias
 
@@ -12,8 +12,8 @@ router = Router()
 
 
 @router.callback_query(F.data == "admin")
-async def admin_panel(callback: CallbackQuery, state: FSMContext):
-    if not await is_admin(callback.from_user.username):
+async def admin_panel(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    if not await service.is_admin(callback.from_user.username):
         await callback.message.answer("❌ У вас нет прав администратора.")
         return
 
@@ -35,7 +35,7 @@ async def ask_alias(msg: Message, state: FSMContext):
 
 
 @router.message(AdminState.adding_label)
-async def save_new_user(msg: Message, state: FSMContext):
+async def save_new_user(msg: Message, state: FSMContext, service: FencesService):
     await msg.answer(config.ADDING_USER)
     data = await state.get_data()
     username = data["username"]
@@ -46,7 +46,7 @@ async def save_new_user(msg: Message, state: FSMContext):
         await msg.answer(f"⚠️ {error}")
         return
 
-    success, err = await add_user(username, label, role='member')
+    success, err = await service.add_user(username, label, role='member')
     if not success:
         await msg.answer(err)
         return
@@ -56,8 +56,8 @@ async def save_new_user(msg: Message, state: FSMContext):
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "admin_remove_member")
-async def list_users_to_remove(callback: CallbackQuery, state: FSMContext):
-    usernames = await get_users_by_role('all')
+async def list_users_to_remove(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    usernames = await service.get_users_by_role('all')
 
     if not usernames:
         await callback.message.edit_text(f"❌ Нет участников для удаления")
@@ -70,19 +70,19 @@ async def list_users_to_remove(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(AdminState.removing_user, F.data.startswith("rm_user:"))
-async def confirm_user_removal(callback: CallbackQuery, state: FSMContext):
+async def confirm_user_removal(callback: CallbackQuery, state: FSMContext, service: FencesService):
     username = callback.data.split(":", 1)[1]
-    await remove_user(username)
+    await service.remove_user(username)
     await callback.message.answer(f"✅ Пользователь @{username} удалён.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "add_root")
-async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
-    usernames = await get_users_by_role('member')
+async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    usernames = await service.get_users_by_role('member')
 
     if not usernames:
-        await callback.message.edit_text(f"❌ Ты че сука охуел? У тебя блядь все админы")
+        await callback.message.edit_text(f"❌ У тебя все админы")
         await state.clear()
         return
 
@@ -92,11 +92,11 @@ async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "delete_root")
-async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
-    usernames = await get_users_by_role('admin')
+async def list_users_to_remove_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    usernames = await service.get_users_by_role('admin')
 
     if not usernames:
-        await callback.message.edit_text(f"❌ Ты че сука охуел? У тебя блядь все участники")
+        await callback.message.edit_text(f"❌ У тебя все участники")
         await state.clear()
         return
 
@@ -106,17 +106,17 @@ async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(AdminState.add_root, F.data.startswith("rm_user:"))
-async def confirm_user_root(callback: CallbackQuery, state: FSMContext):
+async def confirm_user_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
     alias = callback.data.split(":", 1)[1]
-    await set_admin_flag(alias=alias, admin_flag=True)
+    await service.set_admin_flag(alias=alias, admin_flag=True)
     await callback.message.answer(f"✅ {alias} теперь админ.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
 
 
 @router.callback_query(AdminState.delete_root, F.data.startswith("rm_user:"))
-async def delete_user_root(callback: CallbackQuery, state: FSMContext):
+async def delete_user_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
     alias = callback.data.split(":", 1)[1]
-    await set_admin_flag(alias=alias, admin_flag=False)
+    await service.set_admin_flag(alias=alias, admin_flag=False)
     await callback.message.answer(f"✅ {alias} теперь обычный участник.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
 
@@ -128,9 +128,12 @@ async def set_datetime_handler(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(AdminState.set_datetime)
-async def success_set_datetime(msg: Message, state: FSMContext):
+async def success_set_datetime(msg: Message, state: FSMContext, service: FencesService):
     await msg.answer('Применение...')
-    datetime_str = msg.text
-    await set_datetime(datetime_str)
-    await msg.answer(f'Время действия бота изменено на: {datetime_str}', reply_markup=admin_panel_keyboad())
+    success = await service.set_datetime(msg.text)
+    if not success:
+        await msg.answer('❌ Некорректный формат. Ожидается: ДД.ММ.ГГГГ ЧЧ:ММ:СС')
+        return
+
+    await msg.answer(f'Время действия бота изменено на: {msg.text}', reply_markup=admin_panel_keyboad())
     await state.clear()

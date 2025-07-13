@@ -3,19 +3,19 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from src.config import config
-from src.keyboards import user_messages_keyboard, main_menu, back_recipient, back_to_board_keyboard
-from src.services import get_messages_by_username
+from src.keyboards import user_messages_keyboard, main_menu, back_to_board_keyboard
+from src.services import FencesService
 
 router = Router()
 
 
 @router.callback_query(F.data == "view")
-async def view_messages(callback: CallbackQuery, state: FSMContext):
+async def view_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
     username = callback.from_user.username
-    board = await get_messages_by_username(username)
+    board = await service.get_messages_by_username(username)
     if not board:
         await callback.message.answer(config.EMPTY_BOARD)
-        await callback.message.answer(config.START_CMD, reply_markup=await main_menu(callback.from_user.username))
+        await callback.message.answer(config.START_CMD, reply_markup=await main_menu(username, service=service))
         await state.clear()
         return
 
@@ -23,9 +23,9 @@ async def view_messages(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("view:"))
-async def show_board_message(callback: CallbackQuery, state: FSMContext):
+async def show_board_message(callback: CallbackQuery, state: FSMContext, service: FencesService):
     username = callback.from_user.username
-    board = await get_messages_by_username(username)
+    board = await service.get_messages_by_username(username)
     alias = callback.data.split("view:", 1)[1]
 
     if alias not in board:
@@ -33,11 +33,7 @@ async def show_board_message(callback: CallbackQuery, state: FSMContext):
         await state.clear()
         return
 
-    chunks = board[alias]
-    if not isinstance(chunks, list):
-        chunks = [str(chunks)]
-
-    for chunk in chunks:
+    for chunk in board[alias]:
         await callback.message.answer(chunk)
 
     await callback.message.answer(f"{config.EOL_BOARD} {alias}", reply_markup=back_to_board_keyboard())

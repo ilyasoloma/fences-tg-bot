@@ -4,7 +4,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
 
 from src.config import config
-from src.services import is_allowed
+from src.services import FencesService
 from src.utils.logger import logger
 
 
@@ -16,13 +16,15 @@ class AccessControlMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         username = event.from_user.username
-        if not await is_allowed(username):
+        service: FencesService = data["service"]
+
+        if not await service.is_allowed(username):
+            logger.warning("[ACCESS DENIED] @%s", username)
+            text = config.ACCESS_DENIED
             if isinstance(event, Message):
-                logger.warning("[ACCESS DENIED] @%s tried to send: %r", username, event.text)
-                await event.answer(config.ACCESS_DENIED)
+                await event.answer(text)
             elif isinstance(event, CallbackQuery):
-                logger.warning("[ACCESS DENIED] @%s tried to press: %r", username, event.data)
-                await event.message.edit_text(config.ACCESS_DENIED)
+                await event.message.edit_text(text)
             return
 
         return await handler(event, data)

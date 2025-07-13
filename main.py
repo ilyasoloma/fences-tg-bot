@@ -1,11 +1,16 @@
+import asyncio
+
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ErrorEvent
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from src.bot import bot
-from src.db.repository import FencesMongo
+from src.config import config
+from src.db.repository import FencesRepository
 from src.middleware.access_control import AccessControlMiddleware
 from src.routers import router
+from src.services import FencesService
 from src.utils.logger import logger
 
 
@@ -14,13 +19,18 @@ async def error_handler(event: ErrorEvent):
 
 
 async def main():
-    db = FencesMongo()
-    await db.initialize_database()
+    client = AsyncIOMotorClient(config.MONGO_DB_URL)
+    repo = FencesRepository(client)
+    await repo.init_db()
+    service = FencesService(repo)
 
     dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(router)
+    dp["repo"] = repo
+    dp["service"] = service
 
+    dp.include_router(router)
     dp.errors.register(error_handler)
+
     dp.message.middleware(AccessControlMiddleware())
     dp.callback_query.middleware(AccessControlMiddleware())
 
@@ -29,6 +39,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())

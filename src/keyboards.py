@@ -1,24 +1,24 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from src.services import FencesService
 
-from src.services import get_contacts, is_admin, is_eol_date
 
 
 def btn(text, data):
     return InlineKeyboardButton(text=text, callback_data=data)
 
 
-async def main_menu(username: str):
+async def main_menu(username: str, service: FencesService):
     base = []
-    if not await is_eol_date():
+    if not await service.is_eol_date():
         base.append([btn("✏️ Написать", "write")])
     base.append([btn("📬 Посмотреть", "view")])
-    if await is_admin(username):
+    if await service.is_admin(username):
         base.append([btn("⚙ Управление", "admin")])
     return InlineKeyboardMarkup(inline_keyboard=base)
 
 
-async def recipient_keyboard():
-    contacts = await get_contacts()
+async def recipient_keyboard(service: FencesService):
+    contacts = await service.get_contacts()
     return InlineKeyboardMarkup(inline_keyboard=[[btn(name, name)] for name in contacts] + [[btn("🔙 Назад", "back")]])
 
 
