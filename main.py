@@ -31,8 +31,10 @@ async def monitor_eol(service: FencesService):
 
 async def main():
     client = AsyncIOMotorClient(config.MONGO_DB_URL)
+    logger.info("Successfully connected to MongoDB at %s", config.MONGO_DB_URL)
     repo = FencesRepository(client)
     await repo.init_db()
+    logger.info("Database initialized successfully")
     service = FencesService(repo)
 
     dp = Dispatcher(storage=MemoryStorage())
