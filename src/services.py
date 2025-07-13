@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Literal
 
 from src.config import config
 from src.db import models
-from src.db.models import Settings
+from src.db.models import Settings, UserEntry
 from src.db.repository import FencesRepository
 
 
@@ -13,7 +13,6 @@ class FencesService:
         self.repo = repo
         self._expired = False
         self._settings_cache: Optional[Settings] = None
-        self._eol_datetime: Optional[datetime] = None
 
     async def _load_settings(self) -> Settings:
         if self._settings_cache is None:
@@ -42,19 +41,26 @@ class FencesService:
         settings = await self._load_settings()
         return any(member.username == username and member.is_admin for member in settings.members)
 
-    async def get_contacts(self, type_users: str = 'all') -> Dict[str, str]:
+    async def get_users(self, role: Literal['all', 'admin', 'member'] = 'all',
+                        return_field: Literal['username', 'label', 'dict'] = 'username'
+                        ) -> List[UserEntry] | Dict[str, str]:
+        logging.debug("Fetching users with role=%s, return_field=%s", role, return_field)
         settings = await self._load_settings()
         members = settings.members
-        if type_users == 'all':
-            return {m.label: m.username for m in members}
-        elif type_users == 'members':
-            return {m.label: m.username for m in members if not m.is_admin}
-        elif type_users == 'admins':
-            return {m.label: m.username for m in members if m.is_admin}
-        return {}
+
+        if role == 'admin':
+            filtered = [m for m in members if m.is_admin]
+        elif role == 'member':
+            filtered = [m for m in members if not m.is_admin]
+        else:
+            filtered = members
+
+        if return_field == 'dict':
+            return {m.label: m.username for m in filtered}
+        return [getattr(m, return_field) for m in filtered]
 
     async def save_board(self, recipient_label: str, sender_alias: str, chunks: List[str]) -> None:
-        contacts = await self.get_contacts()
+        contacts = await self.get_users(return_field='dict')
         recipient_username = contacts.get(recipient_label)
         if recipient_username:
             await self.repo.save_message(recipient_username, sender_alias, chunks)
@@ -76,31 +82,6 @@ class FencesService:
         await self.repo.add_member(user)
         await self._invalidate_cache()
         return True, None
-
-    async def get_users_by_role(self, role: str, returning: str = 'label') -> List[str]:
-        if role == 'admin':
-            users = await self.repo.get_admins()
-        elif role == 'member':
-            users = await self.repo.get_only_members()
-        elif role == 'all':
-            users = await self.repo.get_all_members()
-        else:
-            return []
-
-        return [u[returning] for u in users if returning in u]
-    
-    # async def get_users_by_role(self, role: str, returning: str = 'label') -> List[str]:
-    #     settings = await self._load_settings()
-    #     members = settings.members
-    #     if role == 'admin':
-    #         users = [m for m in members if m.is_admin]
-    #     elif role == 'member':
-    #         users = [m for m in members if not m.is_admin]
-    #     elif role == 'all':
-    #         users = members
-    #     else:
-    #         return []
-    #     return [u[returning] for u in users if returning in u]
 
     async def remove_user(self, alias: str) -> None:
         username = await self.repo.get_username_by_alias(alias)

@@ -57,30 +57,28 @@ async def save_new_user(msg: Message, state: FSMContext, service: FencesService)
 
 @router.callback_query(AdminState.choosing_action, F.data == "admin_remove_member")
 async def list_users_to_remove(callback: CallbackQuery, state: FSMContext, service: FencesService):
-    usernames = await service.get_users_by_role('all')
-
+    usernames = await service.get_users(role='all')
     if not usernames:
         await callback.message.edit_text(f"❌ Нет участников для удаления")
         await state.clear()
         return
 
     await callback.message.edit_text("Выберите пользователя для удаления:",
-                                     reply_markup=await choose_user_to_remove_keyboard(usernames))
+                                     reply_markup=await choose_user_to_remove_keyboard(service, role='all'))
     await state.set_state(AdminState.removing_user)
 
 
 @router.callback_query(AdminState.removing_user, F.data.startswith("rm_user:"))
 async def confirm_user_removal(callback: CallbackQuery, state: FSMContext, service: FencesService):
-    username = callback.data.split(":", 1)[1]
-    await service.remove_user(username)
-    await callback.message.answer(f"✅ Пользователь @{username} удалён.", reply_markup=admin_panel_keyboad())
+    label = callback.data.split(":", 1)[1]
+    await service.remove_user(label)
+    await callback.message.edit_text(f"✅ Пользователь {label} удалён.", reply_markup=admin_panel_keyboad())
     await state.set_state(AdminState.choosing_action)
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "add_root")
 async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
-    usernames = await service.get_users_by_role('member')
-
+    usernames = await service.get_users(role='member')
     if not usernames:
         await callback.message.edit_text(f"❌ У тебя все админы")
         await state.clear()
@@ -88,21 +86,20 @@ async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext, ser
         return
 
     await callback.message.edit_text("Выберите будущего админа",
-                                     reply_markup=await choose_user_to_remove_keyboard(usernames))
+                                     reply_markup=await choose_user_to_remove_keyboard(service, role='member'))
     await state.set_state(AdminState.add_root)
 
 
 @router.callback_query(AdminState.choosing_action, F.data == "delete_root")
 async def list_users_to_remove_root(callback: CallbackQuery, state: FSMContext, service: FencesService):
-    usernames = await service.get_users_by_role('admin')
-
+    usernames = await service.get_users(role='admin')
     if not usernames:
         await callback.message.edit_text(f"❌ У тебя все участники")
         await state.clear()
         return
 
     await callback.message.edit_text("Выберите бывшего админа",
-                                     reply_markup=await choose_user_to_remove_keyboard(usernames))
+                                     reply_markup=await choose_user_to_remove_keyboard(service, role='admin'))
     await state.set_state(AdminState.delete_root)
 
 

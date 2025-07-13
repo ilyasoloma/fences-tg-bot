@@ -1,3 +1,5 @@
+from typing import Literal
+
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from src.services import FencesService
@@ -18,7 +20,7 @@ async def main_menu(username: str, service: FencesService):
 
 
 async def recipient_keyboard(service: FencesService):
-    contacts = await service.get_contacts()
+    contacts = await service.get_users(return_field='dict')
     return InlineKeyboardMarkup(inline_keyboard=[[btn(name, name)] for name in contacts] + [[btn("🔙 Назад", "back")]])
 
 
@@ -31,8 +33,7 @@ def back_recipient():
 
 
 def message_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[[btn("💾 Сохранить", "save")],
-                                                 [btn("🔙 Отменить всё", "cancel")]])
+    return InlineKeyboardMarkup(inline_keyboard=[[btn("💾 Сохранить", "save")], [btn("🔙 Отменить всё", "cancel")]])
 
 
 def cancel_sending_keyboard():
@@ -61,7 +62,8 @@ def admin_panel_keyboad():
                                                  [btn("🔙 Назад", "back")]])
 
 
-async def choose_user_to_remove_keyboard(usernames):
+async def choose_user_to_remove_keyboard(service: FencesService, role: Literal['all', 'admin', 'member'] = 'all'):
+    usernames = await service.get_users(role=role, return_field='label')
     rows = [[btn(f"{u}", f"rm_user:{u}")] for u in usernames]
     rows.append([btn("🔙 Назад", "admin")])
     return InlineKeyboardMarkup(inline_keyboard=rows)

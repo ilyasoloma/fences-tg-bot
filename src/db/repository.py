@@ -26,13 +26,18 @@ class FencesRepository:
             settings["eol_datetime"] = config.EOL_DATETIME
             await self.db.fences_bot_settings.insert_one(settings)
 
+            await self.db.fences_bot_settings.create_index("name")
+
         if "fences_bot_messages" not in collections:
             logger.info("Creating 'fences_bot_messages' collection...")
             await self.db.create_collection("fences_bot_messages")
 
+            await self.db.fences_bot_messages.create_index("username")
+
         if config.ADMIN_USERNAME is not None:
             await self.add_member(user=UserEntry(username=config.ADMIN_USERNAME, label=config.ADMIN_LABEL,
                                                  is_admin=True))
+
     # --- Settings collection operations ---
 
     async def get_settings(self) -> Optional[Dict[str, Any]]:
