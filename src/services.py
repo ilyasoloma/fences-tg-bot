@@ -73,11 +73,15 @@ class FencesService:
             return False, f"❌ Псевдоним '{alias}' уже используется для сообщений этому получателю. Выбери другой."
         return True, None
 
-    async def save_board(self, recipient_label: str, sender_alias: str, chunks: List[str]) -> None:
+    async def save_board(self, recipient_label: str, sender_alias: str, chunks: List[str],
+                         sender_username: str | None = None) -> None:
         contacts = await self.get_users(return_field='dict')
         recipient_username = contacts.get(recipient_label)
         if recipient_username:
-            await self.repo.save_message(recipient_username, sender_alias, chunks)
+            await self.repo.save_message(recipient_username=recipient_username,
+                                         sender_alias=sender_alias,
+                                         parts=chunks,
+                                         sender_username=sender_username)
 
     async def get_messages_by_username(self, username: str) -> Dict[str, List[str]]:
         return await self.repo.get_messages(username)
@@ -133,31 +137,34 @@ class FencesService:
         contacts = await self.get_users(return_field='dict')
         failed_recipients = []
 
-        async def send_message_to_chat(chat_id: int, message: Dict) -> bool:
+        async def send_message_to_chat(user_chat_id: int, message_dict: Dict) -> bool:
             try:
-                if message["type"] == "text":
-                    await bot.send_message(chat_id=chat_id, text=message["content"])
-                elif message["type"] == "photo":
-                    await bot.send_photo(chat_id=chat_id, photo=message["content"], caption=message.get("caption"))
-                elif message["type"] == "video":
-                    await bot.send_video(chat_id=chat_id, video=message["content"], caption=message.get("caption"))
-                elif message["type"] == "video_note":
-                    await bot.send_video_note(chat_id=chat_id, video_note=message["content"])
-                elif message["type"] == "audio":
-                    await bot.send_audio(chat_id=chat_id, audio=message["content"], caption=message.get("caption"))
-                elif message["type"] == "sticker":
-                    await bot.send_sticker(chat_id=chat_id, sticker=message["content"])
-                elif message["type"] == "document":
-                    await bot.send_document(chat_id=chat_id, document=message["content"],
-                                            caption=message.get("caption"))
-                elif message["type"] == "voice":
-                    await bot.send_voice(chat_id=chat_id, voice=message["content"])
+                if message_dict["type"] == "text":
+                    await bot.send_message(chat_id=user_chat_id, text=message_dict["content"])
+                elif message_dict["type"] == "photo":
+                    await bot.send_photo(chat_id=user_chat_id, photo=message_dict["content"],
+                                         caption=message_dict.get("caption"))
+                elif message_dict["type"] == "video":
+                    await bot.send_video(chat_id=user_chat_id, video=message_dict["content"],
+                                         caption=message_dict.get("caption"))
+                elif message_dict["type"] == "video_note":
+                    await bot.send_video_note(chat_id=user_chat_id, video_note=message_dict["content"])
+                elif message_dict["type"] == "audio":
+                    await bot.send_audio(chat_id=user_chat_id, audio=message_dict["content"],
+                                         caption=message_dict.get("caption"))
+                elif message_dict["type"] == "sticker":
+                    await bot.send_sticker(chat_id=user_chat_id, sticker=message_dict["content"])
+                elif message_dict["type"] == "document":
+                    await bot.send_document(chat_id=user_chat_id, document=message_dict["content"],
+                                            caption=message_dict.get("caption"))
+                elif message_dict["type"] == "voice":
+                    await bot.send_voice(chat_id=user_chat_id, voice=message_dict["content"])
                 else:
-                    logger.warning("Unsupported message type: %s", message["type"])
+                    logger.warning("Unsupported message type: %s", message_dict["type"])
                     return False
                 return True
             except Exception as e:
-                logger.error("Failed to send %s message to chat_id %s: %s", message["type"], chat_id, str(e))
+                logger.error("Failed to send %s message to chat_id %s: %s", message_dict["type"], user_chat_id, str(e))
                 return False
 
         if recipient_label:

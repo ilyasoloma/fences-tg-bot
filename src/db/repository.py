@@ -102,8 +102,10 @@ class FencesRepository:
 
     # --- Messages operations ---
 
-    async def save_message(self, recipient_username: str, alias: str, parts: List[str]):
-        entry = models.MessageEntry(alias=alias, parts=parts)
+    async def save_message(self, recipient_username: str, sender_alias: str, parts: List[str],
+                           sender_username: str | None = None):
+        entry = models.MessageEntry(sender_username=sender_username, sender_alias=sender_alias,
+                                    parts=parts, addition_time=datetime.now())
         await self.db.fences_bot_messages.update_one({"username": recipient_username},
                                                      {"$addToSet": {"messages": entry.dict()}})
 
@@ -112,7 +114,7 @@ class FencesRepository:
         if not doc or "messages" not in doc:
             return {}
 
-        return {msg["alias"]: msg["parts"] for msg in doc["messages"]}
+        return {msg["sender_alias"]: msg["parts"] for msg in doc["messages"]}
 
     async def get_username_by_alias(self, alias: str) -> Optional[str]:
         members = await self.get_all_members()

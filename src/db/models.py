@@ -18,8 +18,10 @@ class Settings(BaseModel):
 
 
 class MessageEntry(BaseModel):
-    alias: str
+    sender_username: str | None = None
+    sender_alias: str
     parts: List[str]
+    addition_time: datetime
 
 
 class MessageBoard(BaseModel):

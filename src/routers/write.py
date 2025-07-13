@@ -86,7 +86,10 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
         await callback.answer()
         return
 
-    await service.save_board(data["recipient"], data["alias"], parts)
+    await service.save_board(recipient_label=data["recipient"],
+                             chunks=parts,
+                             sender_alias=data["alias"],
+                             sender_username=callback.from_user.username)
     logger.info("Sent full message to %s", data["recipient"])
     await callback.message.answer(config.MESSAGE_SENT)
     await state.clear()
