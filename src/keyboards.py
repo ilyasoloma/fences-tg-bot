@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from src.services import FencesService
 
+from src.services import FencesService
 
 
 def btn(text, data):
@@ -43,9 +43,9 @@ def cancel_sending_keyboard():
 
 
 async def user_messages_keyboard(board: dict):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[[btn(f"{k}", f"view:{k}")] for k in board.keys()] + [[btn("🔙 Назад", "back")]]
-    )
+    buttons = [[btn(f"{k}", f"view:{k}")] for k in board.keys()]
+    buttons.append([btn("📄 Получить файл", "download_messages"), btn("🔙 Главное меню", "back")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def back_to_board_keyboard():
