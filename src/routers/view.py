@@ -3,7 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, BufferedInputFile
 
 from src.config import config
-from src.keyboards import user_messages_keyboard, main_menu, back_to_board_keyboard
+from src.keyboards.view_keyboards import user_messages_keyboard, back_to_board_keyboard
+from src.keyboards.general_keyboards import main_menu
 from src.services import FencesService
 from src.utils.logger import logger
 from src.utils.static import prepared_msg_file

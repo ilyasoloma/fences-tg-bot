@@ -3,8 +3,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.config import config
-from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard, bot_message_type_keyboard, \
-    bot_message_recipient_keyboard, message_keyboard, cancel_sending_keyboard
+from src.keyboards.admin_keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard, \
+    bot_message_type_keyboard, bot_message_recipient_keyboard
+from src.keyboards.general_keyboards import message_keyboard, cancel_sending_keyboard
 from src.services import FencesService
 from src.states import AdminState
 from src.utils.logger import logger

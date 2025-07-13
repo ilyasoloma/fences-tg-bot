@@ -3,8 +3,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.config import config
-from src.keyboards import recipient_keyboard, message_keyboard, entry_alias_keyboard, main_menu, \
-    cancel_sending_keyboard, back_keyboard
+from src.keyboards.write_keyboards import recipient_keyboard, entry_alias_keyboard, back_keyboard
+from src.keyboards.general_keyboards import main_menu, cancel_sending_keyboard
+from src.keyboards.general_keyboards import message_keyboard
 from src.services import FencesService
 from src.states import Wall
 from src.utils.logger import logger
