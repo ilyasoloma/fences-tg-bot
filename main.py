@@ -21,7 +21,7 @@ async def error_handler(event: ErrorEvent):
 
 async def monitor_eol(service: FencesService):
     while True:
-        eol = await service.repo.get_eol_datetime()
+        eol = await service.get_eol_datetime()
         if eol and datetime.now() >= eol:
             service.mark_expired()
         else:

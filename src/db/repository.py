@@ -36,10 +36,11 @@ class FencesRepository:
     # --- Settings collection operations ---
 
     async def get_settings(self) -> Optional[Dict[str, Any]]:
+        logger.debug("Fetching settings from DB")
         return await self.db.fences_bot_settings.find_one({"name": "settings"})
 
     async def update_settings(self, updates: Dict[str, Any]):
-        await self.db.fences_bot_settings.update_one({"name": "settings"},{"$set": updates})
+        await self.db.fences_bot_settings.update_one({"name": "settings"}, {"$set": updates})
 
     async def add_member(self, user: models.UserEntry):
         await self.db.fences_bot_settings.update_one({"name": "settings"},

@@ -84,6 +84,7 @@ async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext, ser
     if not usernames:
         await callback.message.edit_text(f"❌ У тебя все админы")
         await state.clear()
+        await callback.message.answer(config.MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboad())
         return
 
     await callback.message.edit_text("Выберите будущего админа",
