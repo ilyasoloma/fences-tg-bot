@@ -1,12 +1,15 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile
+from aiogram.enums import ChatType
 
 from src.config import config
-from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard
+from src.keyboards import admin_panel_keyboad, choose_user_to_remove_keyboard, bot_message_type_keyboard, \
+    bot_message_recipient_keyboard, message_keyboard, cancel_sending_keyboard
 from src.services import FencesService
 from src.states import AdminState
 from src.utils.static import validate_alias
+from src.utils.logger import logger
 
 router = Router()
 
@@ -135,3 +138,134 @@ async def success_set_datetime(msg: Message, state: FSMContext, service: FencesS
 
     await msg.answer(f'Время действия бота изменено на: {msg.text}', reply_markup=admin_panel_keyboad())
     await state.clear()
+
+
+@router.callback_query(AdminState.choosing_action, F.data == "send_bot_message")
+async def choose_bot_message_type(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    if not await service.is_admin(callback.from_user.username):
+        await callback.message.answer("❌ У вас нет прав администратора.")
+        return
+
+    await callback.message.edit_text("Кому отправить сообщение от бота?", reply_markup=bot_message_type_keyboard())
+    await state.set_state(AdminState.bot_message_type)
+
+
+@router.callback_query(AdminState.bot_message_type, F.data == "bot_message_all")
+async def bot_message_all(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("Введите сообщение (текст, фото, видео, стикер и т.д.):",
+                                    reply_markup=message_keyboard())
+    await state.set_state(AdminState.bot_message_typing)
+    await state.update_data(bot_recipient=None, bot_messages=[])
+
+
+@router.callback_query(AdminState.bot_message_type, F.data == "bot_message_single")
+async def choose_bot_message_recipient(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    contacts = await service.get_users(return_field='dict')
+    if not contacts:
+        await callback.message.edit_text("❌ Нет пользователей для отправки сообщения.",
+                                        reply_markup=admin_panel_keyboad())
+        await state.set_state(AdminState.choosing_action)
+        return
+
+    await callback.message.edit_text("Выберите получателя:", reply_markup=await bot_message_recipient_keyboard(service))
+    await state.set_state(AdminState.bot_message_recipient)
+
+
+@router.callback_query(AdminState.bot_message_recipient, F.data.startswith("bot_recipient:"))
+async def bot_message_single(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    recipient_label = callback.data.split(":", 1)[1]
+    contacts = await service.get_users(return_field='dict')
+    if recipient_label not in contacts:
+        await callback.message.edit_text(f"❌ Получатель {recipient_label} не найден.",
+                                        reply_markup=admin_panel_keyboad())
+        await state.set_state(AdminState.choosing_action)
+        logger.warning("Recipient %s not found for bot message", recipient_label)
+        return
+
+    await state.update_data(bot_recipient=recipient_label, bot_messages=[])
+    await callback.message.edit_text(f"Введите сообщение (текст, фото, видео, стикер и т.д.) для {recipient_label}:",
+                                    reply_markup=message_keyboard())
+    await state.set_state(AdminState.bot_message_typing)
+    await callback.answer()
+
+
+@router.message(AdminState.bot_message_typing)
+async def collect_bot_message(msg: Message, state: FSMContext, service: FencesService):
+    data = await state.get_data()
+    messages = data.get("bot_messages", [])
+
+    message_data = {}
+    if msg.text:
+        message_data = {"type": "text", "content": msg.text}
+    elif msg.photo:
+        message_data = {"type": "photo", "content": msg.photo[-1].file_id, "caption": msg.caption}
+    elif msg.video:
+        message_data = {"type": "video", "content": msg.video.file_id, "caption": msg.caption}
+    elif msg.video_note:
+        message_data = {"type": "video_note", "content": msg.video_note.file_id}
+    elif msg.audio:
+        message_data = {"type": "audio", "content": msg.audio.file_id, "caption": msg.caption}
+    elif msg.sticker:
+        message_data = {"type": "sticker", "content": msg.sticker.file_id}
+    elif msg.document:
+        message_data = {"type": "document", "content": msg.document.file_id, "caption": msg.caption}
+    elif msg.voice:
+        message_data = {"type": "voice", "content": msg.voice.file_id}
+    else:
+        await msg.answer("❌ Неподдерживаемый тип сообщения. Отправьте текст, фото, видео, стикер, аудио или документ.")
+        await msg.answer("Введите сообщение:", reply_markup=message_keyboard())
+        logger.warning("Unsupported message type from %s", msg.from_user.username)
+        return
+
+    messages.append(message_data)
+    await state.update_data(bot_messages=messages)
+    await msg.answer("✏️ Сообщение добавлено. Продолжай отправлять или нажми «💾 Сохранить».",
+                    reply_markup=message_keyboard())
+
+
+@router.callback_query(AdminState.bot_message_typing, F.data == "save")
+async def send_bot_direct_message(callback: CallbackQuery, state: FSMContext, service: FencesService, bot: Bot):
+    data = await state.get_data()
+    messages = data.get("bot_messages", [])
+    if not messages:
+        await callback.message.answer("❌ Сообщение пустое. Отправьте хотя бы одно сообщение.",
+                                     reply_markup=admin_panel_keyboad())
+        logger.warning("Empty bot message")
+        await state.set_state(AdminState.choosing_action)
+        return
+
+    recipient_label = data.get("bot_recipient")
+    success, error = await service.send_bot_direct_message(bot, recipient_label, messages)
+    target = "всем пользователям" if recipient_label is None else f"пользователю {recipient_label}"
+    if success:
+        await callback.message.answer(f"✅ Сообщение от бота отправлено {target}.",
+                                     reply_markup=admin_panel_keyboad())
+        logger.info("Sent bot message to %s", target)
+    else:
+        await callback.message.answer(f"⚠️ {error}", reply_markup=admin_panel_keyboad())
+        logger.warning("Failed to send bot message to %s: %s", target, error)
+    await state.set_state(AdminState.choosing_action)
+
+
+@router.callback_query(AdminState.bot_message_typing, F.data == "cancel")
+async def cancel_sending_messages(callback: CallbackQuery):
+    await callback.message.answer(config.WARNING_LEAVE_MSG, reply_markup=cancel_sending_keyboard())
+    await callback.answer()
+
+
+@router.callback_query(AdminState.bot_message_typing, F.data == "collect_msg")
+async def back_to_typing(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    recipient_label = data.get("bot_recipient")
+    text = "Введите сообщение (текст, фото, видео, стикер и т.д.):" if recipient_label is None \
+        else f"Введите сообщение (текст, фото, видео, стикер и т.д.) для {recipient_label}:"
+    await callback.message.answer(text, reply_markup=message_keyboard())
+    await state.set_state(AdminState.bot_message_typing)
+    await callback.answer()
+
+
+@router.callback_query(AdminState.bot_message_typing, F.data == "try_cancel")
+async def confirm_cancel_sending_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    await state.clear()
+    await callback.message.edit_text(config.MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboad())
+    await state.set_state(AdminState.choosing_action)

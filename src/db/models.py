@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import List, Literal
+from typing import List
+
 from pydantic import BaseModel
 
 
 class UserEntry(BaseModel):
     username: str  # Telegram username (без @)
-    label: str     # Отображаемое имя
+    label: str  # Отображаемое имя
+    chat_id: int | None = None
     is_admin: bool
 
 

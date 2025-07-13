@@ -10,6 +10,9 @@ class AdminState(StatesGroup):
     add_root = State()
     delete_root = State()
     set_datetime = State()
+    bot_message_type = State()
+    bot_message_recipient = State()
+    bot_message_typing = State()
 
 
 class Wall(StatesGroup):
@@ -17,4 +20,3 @@ class Wall(StatesGroup):
     entering_alias = State()
     typing_message = State()
     choosing_recipient = State()
-    order = [selecting_recipient, entering_alias, typing_message, choosing_recipient]

@@ -2,10 +2,13 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Literal
 
+from aiogram import Bot
+
 from src.config import config
 from src.db import models
 from src.db.models import Settings, UserEntry
 from src.db.repository import FencesRepository
+from src.utils.logger import logger
 
 
 class FencesService:
@@ -79,19 +82,22 @@ class FencesService:
     async def get_messages_by_username(self, username: str) -> Dict[str, List[str]]:
         return await self.repo.get_messages(username)
 
-    async def add_user(self, username: str, label: str, role: str) -> tuple[bool, Optional[str]]:
+    async def add_user(self, username: str, label: str, role: str, chat_id: int = 0) -> tuple[bool, Optional[str]]:
         settings = await self._load_settings()
         usernames = [m.username for m in settings.members]
         labels = [m.label for m in settings.members]
 
         if username in usernames:
+            logger.warning("Attempt to add existing user %s", username)
             return False, "❌ Такой username уже есть"
         if label in labels:
+            logger.warning("Attempt to add user with existing label %s", label)
             return False, "❌ Такое отображаемое имя уже используется"
 
-        user = models.UserEntry(username=username, label=label, is_admin=(role == "admin"))
+        user = models.UserEntry(username=username, label=label, is_admin=(role == "admin"), chat_id=chat_id)
         await self.repo.add_member(user)
         await self._invalidate_cache()
+        logger.info("Added user %s with label %s", username, label)
         return True, None
 
     async def remove_user(self, alias: str) -> None:
@@ -121,3 +127,75 @@ class FencesService:
         settings = await self._load_settings()
         eol = settings.eol_datetime
         return eol
+
+    async def send_bot_direct_message(self, bot: Bot, recipient_label: Optional[str],
+                                      messages: List[Dict]) -> tuple[bool, Optional[str]]:
+        contacts = await self.get_users(return_field='dict')
+        failed_recipients = []
+
+        async def send_message_to_chat(chat_id: int, message: Dict) -> bool:
+            try:
+                if message["type"] == "text":
+                    await bot.send_message(chat_id=chat_id, text=message["content"])
+                elif message["type"] == "photo":
+                    await bot.send_photo(chat_id=chat_id, photo=message["content"], caption=message.get("caption"))
+                elif message["type"] == "video":
+                    await bot.send_video(chat_id=chat_id, video=message["content"], caption=message.get("caption"))
+                elif message["type"] == "video_note":
+                    await bot.send_video_note(chat_id=chat_id, video_note=message["content"])
+                elif message["type"] == "audio":
+                    await bot.send_audio(chat_id=chat_id, audio=message["content"], caption=message.get("caption"))
+                elif message["type"] == "sticker":
+                    await bot.send_sticker(chat_id=chat_id, sticker=message["content"])
+                elif message["type"] == "document":
+                    await bot.send_document(chat_id=chat_id, document=message["content"],
+                                            caption=message.get("caption"))
+                elif message["type"] == "voice":
+                    await bot.send_voice(chat_id=chat_id, voice=message["content"])
+                else:
+                    logger.warning("Unsupported message type: %s", message["type"])
+                    return False
+                return True
+            except Exception as e:
+                logger.error("Failed to send %s message to chat_id %s: %s", message["type"], chat_id, str(e))
+                return False
+
+        if recipient_label:
+            if recipient_label not in contacts:
+                logger.warning("Recipient %s not found in contacts", recipient_label)
+                return False, f"❌ Получатель {recipient_label} не найден"
+            chat_id = await self.repo.get_user_chat_id(recipient_label)
+            if not chat_id or chat_id == 0:
+                logger.warning("No chat_id for recipient %s", recipient_label)
+                return False, f"❌ Не удалось отправить сообщение пользователю {recipient_label}: chat_id не найден"
+
+            for message in messages:
+                if not await send_message_to_chat(chat_id, message):
+                    return False, f"❌ Ошибка отправки сообщения пользователю {recipient_label}"
+            logger.info("Sent %d messages to %s (chat_id: %s)", len(messages), recipient_label, chat_id)
+            return True, None
+        else:
+            # Отправка всем пользователям
+            chat_ids = await self.repo.get_all_chat_ids()
+            if not chat_ids:
+                logger.warning("No users found for broadcast message")
+                return False, "❌ Нет пользователей для отправки сообщения"
+
+            for label, username in contacts.items():
+                chat_id = await self.repo.get_user_chat_id(label)
+                if not chat_id or chat_id == 0:
+                    failed_recipients.append(label)
+                    logger.warning("No chat_id for recipient %s", label)
+                    continue
+
+                for message in messages:
+                    if not await send_message_to_chat(chat_id, message):
+                        failed_recipients.append(label)
+                        logger.error("Failed to send message to %s (chat_id: %s)", label, chat_id)
+                        break
+
+            if failed_recipients:
+                return False, f"❌ Сообщение не отправлено пользователям: {', '.join(failed_recipients)}\n" \
+                              f"Скорее всего, они еще ни разу не запускали бота 😢"
+            logger.info("Sent %d messages to all users (%d recipients)", len(messages), len(chat_ids))
+            return True, None
