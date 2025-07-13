@@ -9,6 +9,16 @@ from src.db.repository import FencesRepository
 class FencesService:
     def __init__(self, repo: FencesRepository):
         self.repo = repo
+        self._expired = False
+
+    def is_expired(self) -> bool:
+        return self._expired
+
+    def mark_expired(self):
+        self._expired = True
+
+    def mark_active(self):
+        self._expired = False
 
     async def is_allowed(self, username: str) -> bool:
         contacts = await self.repo.get_contacts()

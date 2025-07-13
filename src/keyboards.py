@@ -9,7 +9,7 @@ def btn(text, data):
 
 async def main_menu(username: str, service: FencesService):
     base = []
-    if not await service.is_eol_date():
+    if not service.is_expired():
         base.append([btn("✏️ Написать", "write")])
     base.append([btn("📬 Посмотреть", "view")])
     if await service.is_admin(username):

@@ -14,6 +14,10 @@ router = Router()
 
 @router.callback_query(F.data == "write")
 async def select_recipient(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    if service.is_expired():
+        await callback.message.answer(config.EOL_DATETIME_MSG, reply_markup=await main_menu(callback.from_user.username,
+                                                                                            service=service))
+        return
     await callback.message.edit_text(config.SELECT_RECIPIENT, reply_markup=await recipient_keyboard(service=service))
     await state.set_state(Wall.choosing_recipient)
 

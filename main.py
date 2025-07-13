@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -18,6 +19,16 @@ async def error_handler(event: ErrorEvent):
     logger.exception("An error occurred: %s", event.exception)
 
 
+async def monitor_eol(service: FencesService):
+    while True:
+        eol = await service.repo.get_eol_datetime()
+        if eol and datetime.now() >= eol:
+            service.mark_expired()
+        else:
+            service.mark_active()
+        await asyncio.sleep(5)
+
+
 async def main():
     client = AsyncIOMotorClient(config.MONGO_DB_URL)
     repo = FencesRepository(client)
@@ -33,6 +44,8 @@ async def main():
 
     dp.message.middleware(AccessControlMiddleware())
     dp.callback_query.middleware(AccessControlMiddleware())
+
+    asyncio.create_task(monitor_eol(service))
 
     logger.info("🚀 Bot is running")
     await dp.start_polling(bot)
