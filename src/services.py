@@ -86,6 +86,14 @@ class FencesService:
     async def get_messages_by_username(self, username: str) -> Dict[str, List[str]]:
         return await self.repo.get_messages(username)
 
+    async def get_user_label(self, username: str) -> Optional[str]:
+        settings = await self._load_settings()
+        for member in settings.members:
+            if member.username == username:
+                return member.label
+        logger.warning("No label found for username %s", username)
+        return None
+
     async def add_user(self, username: str, label: str, role: str, chat_id: int = 0) -> tuple[bool, Optional[str]]:
         settings = await self._load_settings()
         usernames = [m.username for m in settings.members]

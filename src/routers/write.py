@@ -3,7 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from src.config import config
-from src.keyboards import recipient_keyboard, message_keyboard, back_keyboard, main_menu, cancel_sending_keyboard
+from src.keyboards import recipient_keyboard, message_keyboard, entry_alias_keyboard, main_menu, \
+    cancel_sending_keyboard, back_keyboard
 from src.services import FencesService
 from src.states import Wall
 from src.utils.logger import logger
@@ -27,7 +28,36 @@ async def select_recipient(callback: CallbackQuery, state: FSMContext, service: 
 async def enter_alias(callback: CallbackQuery, state: FSMContext):
     await state.update_data(recipient=callback.data)
     await state.set_state(Wall.entering_alias)
-    await callback.message.edit_text(config.WRITE_ALIAS, reply_markup=back_keyboard())
+    await callback.message.edit_text(config.WRITE_ALIAS, reply_markup=entry_alias_keyboard())
+    await callback.answer()
+
+
+@router.callback_query(Wall.entering_alias, F.data == "use_label")
+async def use_label_as_alias(callback: CallbackQuery, state: FSMContext, service: FencesService):
+    username = callback.from_user.username
+    recipient_label = (await state.get_data()).get("recipient")
+
+    # Получаем label пользователя
+    label = await service.get_user_label(username)
+    if not label:
+        await callback.message.edit_text("❌ Не удалось найти ваше отображаемое имя. Введите псевдоним вручную.",
+                                         reply_markup=entry_alias_keyboard())
+        await callback.answer()
+        return
+
+    # Проверяем уникальность label
+    is_unique, unique_error = await service.check_alias_unique(recipient_label, label)
+    if not is_unique:
+        await callback.message.edit_text(f"⚠️ {unique_error}\n\nПожалуйста, введите другой псевдоним.",
+                                         reply_markup=entry_alias_keyboard())
+        logger.warning("Duplicate alias: %s for recipient %s", label, recipient_label)
+        await callback.answer()
+        return
+
+    await state.update_data(alias=label)
+    await state.set_state(Wall.typing_message)
+    await callback.message.edit_text(config.ENTER_MESSAGE, reply_markup=back_keyboard())
+    logger.info("User %s used label '%s' as alias for recipient %s", username, label, recipient_label)
     await callback.answer()
 
 
@@ -35,7 +65,7 @@ async def enter_alias(callback: CallbackQuery, state: FSMContext):
 async def enter_message(msg: Message, state: FSMContext, service: FencesService):
     if msg.text is None:
         await msg.answer(config.ERROR_EMPTY_TEXT)
-        await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
+        await msg.answer(config.WRITE_ALIAS, reply_markup=entry_alias_keyboard())
         logger.warning("Invalid alias content")
         return
 
@@ -43,7 +73,7 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
     valid, error = validate_alias(slug)
     if not valid:
         await msg.answer(f"⚠️ {error}")
-        await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
+        await msg.answer(config.WRITE_ALIAS, reply_markup=entry_alias_keyboard())
         logger.warning("Invalid slug: %s", error)
         return
 
@@ -52,7 +82,7 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
     is_unique, unique_error = await service.check_alias_unique(recipient_label, slug)
     if not is_unique:
         await msg.answer(f"⚠️ {unique_error}\n\nПожалуйста, введите другой псевдоним.")
-        await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
+        await msg.answer(config.WRITE_ALIAS, reply_markup=entry_alias_keyboard())
         logger.warning("Duplicate alias: %s for recipient %s", slug, recipient_label)
         return
 

@@ -26,8 +26,8 @@ def main_menu_reply_keyboard() -> ReplyKeyboardMarkup:
 async def main_menu(username: str, service: FencesService):
     base = []
     if not service.is_expired():
-        base.append([btn("✏️ Написать", "write")])
-    base.append([btn("📬 Посмотреть", "view")])
+        base.append([btn("✏️ Написать на заборчике", "write")])
+    base.append([btn("📬 Посмотреть свой заборчик", "view")])
     if await service.is_admin(username):
         base.append([btn("⚙ Управление", "admin")])
     return InlineKeyboardMarkup(inline_keyboard=base)
@@ -38,8 +38,12 @@ async def recipient_keyboard(service: FencesService):
     return InlineKeyboardMarkup(inline_keyboard=[[btn(name, name)] for name in contacts] + [[btn("🔙 Назад", "back")]])
 
 
+def entry_alias_keyboard(data: str = 'back'):
+    return InlineKeyboardMarkup(inline_keyboard=[[btn("👤 Как в списке", "use_label"), btn("🔙 Назад", data)]])
+
+
 def back_keyboard(data: str = 'back'):
-    return InlineKeyboardMarkup(inline_keyboard=[[btn(f"🔙 Назад", data)]])
+    return InlineKeyboardMarkup(inline_keyboard=[[btn("🔙 Назад", data)]])
 
 
 def back_recipient():

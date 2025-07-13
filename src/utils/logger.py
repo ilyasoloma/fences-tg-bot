@@ -10,10 +10,10 @@ logger = logging.getLogger("bot")
 logger.setLevel(level=config.LOG_LEVEL)
 
 console = logging.StreamHandler()
-console.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+console.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: [%(module)s:%(funcName)s]: %(message)s"))
 
 file = RotatingFileHandler(config.LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-file.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+file.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: [%(module)s:%(funcName)s]: %(message)s"))
 
 logger.addHandler(console)
 logger.addHandler(file)
