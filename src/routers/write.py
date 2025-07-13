@@ -30,7 +30,7 @@ async def enter_alias(callback: CallbackQuery, state: FSMContext):
 
 
 @router.message(Wall.entering_alias)
-async def enter_message(msg: Message, state: FSMContext):
+async def enter_message(msg: Message, state: FSMContext, service: FencesService):
     if msg.text is None:
         await msg.answer(config.ERROR_EMPTY_TEXT)
         await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
@@ -42,6 +42,15 @@ async def enter_message(msg: Message, state: FSMContext):
     if not valid:
         await msg.answer(f"⚠️ {error}", reply_markup=back_keyboard())
         logger.warning("Invalid slug: %s", error)
+        return
+
+    data = await state.get_data()
+    recipient_label = data.get("recipient")
+    is_unique, unique_error = await service.check_alias_unique(recipient_label, slug)
+    if not is_unique:
+        await msg.answer(f"⚠️ {unique_error}\n\nПожалуйста, введите другой псевдоним.")
+        await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
+        logger.warning("Duplicate alias: %s for recipient %s", slug, recipient_label)
         return
 
     await state.update_data(alias=msg.text)

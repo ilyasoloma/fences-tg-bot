@@ -59,6 +59,17 @@ class FencesService:
             return {m.label: m.username for m in filtered}
         return [getattr(m, return_field) for m in filtered]
 
+    async def check_alias_unique(self, recipient_label: str, alias: str) -> tuple[bool, Optional[str]]:
+        contacts = await self.get_users(return_field='dict')
+        recipient_username = contacts.get(recipient_label)
+        if not recipient_username:
+            return False, "❌ Получатель не найден"
+
+        messages = await self.get_messages_by_username(recipient_username)
+        if alias in messages:
+            return False, f"❌ Псевдоним '{alias}' уже используется для сообщений этому получателю. Выбери другой."
+        return True, None
+
     async def save_board(self, recipient_label: str, sender_alias: str, chunks: List[str]) -> None:
         contacts = await self.get_users(return_field='dict')
         recipient_username = contacts.get(recipient_label)
