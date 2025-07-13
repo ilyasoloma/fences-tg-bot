@@ -15,8 +15,9 @@ router = Router()
 @router.callback_query(F.data == "write")
 async def select_recipient(callback: CallbackQuery, state: FSMContext, service: FencesService):
     if service.is_expired():
-        await callback.message.answer(config.EOL_DATETIME_MSG, reply_markup=await main_menu(callback.from_user.username,
-                                                                                            service=service))
+        await callback.message.edit_text(config.EOL_DATETIME_MSG,
+                                         reply_markup=await main_menu(callback.from_user.username, service=service))
+        await callback.answer()
         return
     await callback.message.edit_text(config.SELECT_RECIPIENT, reply_markup=await recipient_keyboard(service=service))
     await state.set_state(Wall.choosing_recipient)
@@ -27,6 +28,7 @@ async def enter_alias(callback: CallbackQuery, state: FSMContext):
     await state.update_data(recipient=callback.data)
     await state.set_state(Wall.entering_alias)
     await callback.message.edit_text(config.WRITE_ALIAS, reply_markup=back_keyboard())
+    await callback.answer()
 
 
 @router.message(Wall.entering_alias)
@@ -40,7 +42,8 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
     slug = msg.text.strip()
     valid, error = validate_alias(slug)
     if not valid:
-        await msg.answer(f"⚠️ {error}", reply_markup=back_keyboard())
+        await msg.answer(f"⚠️ {error}")
+        await msg.answer(config.WRITE_ALIAS, reply_markup=back_keyboard())
         logger.warning("Invalid slug: %s", error)
         return
 
@@ -62,7 +65,7 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
 async def collect_text(msg: Message, state: FSMContext):
     if msg.text is None:
         await msg.answer(config.ERROR_EMPTY_TEXT)
-        await msg.answer(config.ENTER_MESSAGE, reply_markup=back_keyboard())
+        await msg.answer(config.ENTER_MESSAGE, reply_markup=message_keyboard())
         logger.warning("Invalid message content")
         return
 
@@ -80,14 +83,16 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
 
     if not parts:
         await callback.message.answer(config.EMPTY_MSG)
+        await callback.answer()
         return
 
     await service.save_board(data["recipient"], data["alias"], parts)
     logger.info("Sent full message to %s", data["recipient"])
     await callback.message.answer(config.MESSAGE_SENT)
     await state.clear()
-    await callback.message.answer(config.START_CMD, reply_markup=await main_menu(callback.from_user.username,
-                                                                                 service=service))
+    await callback.message.answer(config.START_CMD,
+                                  reply_markup=await main_menu(callback.from_user.username, service=service))
+    await callback.answer()
 
 
 @router.callback_query(Wall.typing_message, F.data == "cancel")
@@ -104,7 +109,8 @@ async def back_to_typing(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(Wall.typing_message, F.data == "try_cancel")
-async def cancel_sending_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
+async def cancel_sending_messages_confirm(callback: CallbackQuery, state: FSMContext, service: FencesService):
     await state.clear()
     await callback.message.edit_text(config.START_CMD, reply_markup=await main_menu(callback.from_user.username,
                                                                                     service=service))
+    await callback.answer()

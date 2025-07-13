@@ -3,15 +3,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from src.config import config
-from src.keyboards import main_menu
+from src.keyboards import main_menu, main_menu_reply_keyboard
 from src.services import FencesService
 from src.utils.logger import logger
 
 router = Router()
 
 
-@router.message(F.text == "/start")
-async def start_cmd(msg: Message, service: FencesService):
+@router.message(F.text.in_({"/start", "🏠 Главное меню"}))
+async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
     username = msg.from_user.username
     chat_id = msg.chat.id
 
@@ -22,8 +22,12 @@ async def start_cmd(msg: Message, service: FencesService):
         logger.warning("Failed to update chat_id for user %s", username)
         return
 
-    logger.info("User %s accessed bot with chat_id %s", username, chat_id)
+    # Очищаем состояние и показываем главное меню
+    await state.clear()
+    logger.info("User %s accessed main menu, chat_id %s", username, chat_id)
+    await msg.answer("Привет!", reply_markup=main_menu_reply_keyboard())
     await msg.answer(config.START_CMD, reply_markup=await main_menu(username, service=service))
+
 
 
 @router.callback_query(F.data == "back")
@@ -31,3 +35,4 @@ async def back_main_menu(callback: CallbackQuery, state: FSMContext, service: Fe
     await state.clear()
     await callback.message.edit_text(config.START_CMD,
                                      reply_markup=await main_menu(callback.from_user.username, service=service))
+    await callback.answer()

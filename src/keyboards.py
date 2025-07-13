@@ -1,12 +1,26 @@
 from typing import Literal
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 from src.services import FencesService
 
 
 def btn(text, data):
     return InlineKeyboardButton(text=text, callback_data=data)
+
+
+def main_menu_reply_keyboard() -> ReplyKeyboardMarkup:
+    """
+    Клавиатура с кнопкой для возврата в главное меню
+
+    :return:
+    :rtype: ReplyKeyboardMarkup
+    """
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="🏠 Главное меню")]],
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
 
 
 async def main_menu(username: str, service: FencesService):
@@ -33,7 +47,7 @@ def back_recipient():
 
 
 def message_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[[btn("💾 Сохранить", "save")], [btn("🔙 Отменить всё", "cancel")]])
+    return InlineKeyboardMarkup(inline_keyboard=[[btn("💾 Сохранить", "save"), btn("🔙 Отменить всё", "cancel")]])
 
 
 def cancel_sending_keyboard():
@@ -54,16 +68,13 @@ def back_to_board_keyboard():
 
 
 def admin_panel_keyboad():
-    return InlineKeyboardMarkup(inline_keyboard=[[btn("➕ Добавить участника", "admin_add"),
-                                                  btn("➖ Удалить участника", "admin_remove_member")],
-
-                                                 [btn('👨‍🚀 Выдать права администратора', 'add_root'),
-                                                  btn("🤐 Отозвать права администратора", "delete_root")],
-
-                                                 [btn('⏱️Изменить время действия бота', 'set_datetime'),
-                                                  btn('📢 Отправить сообщение от бота', 'send_bot_message')],
-
-                                                 [btn("🔙 Назад", "back")]])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [btn("➕ Добавить участника", "admin_add"), btn("➖ Удалить участника", "admin_remove_member")],
+        [btn('👨‍🚀 Выдать права администратора', 'add_root'), btn("🤐 Отозвать права администратора", "delete_root")],
+        [btn('⏱️Изменить время действия бота', 'set_datetime'),
+         btn('📢 Отправить сообщение от бота', 'send_bot_message')],
+        [btn("🔙 Назад", "back")]
+    ])
 
 
 async def choose_user_to_remove_keyboard(service: FencesService, role: Literal['all', 'admin', 'member'] = 'all'):

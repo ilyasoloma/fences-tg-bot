@@ -22,6 +22,7 @@ async def view_messages(callback: CallbackQuery, state: FSMContext, service: Fen
         return
 
     await callback.message.edit_text(config.NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("view:"))
@@ -63,3 +64,4 @@ async def download_messages(callback: CallbackQuery, state: FSMContext, service:
     logger.info("User %s downloaded messages file", username)
 
     await callback.message.answer(config.NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
+    await callback.answer()
