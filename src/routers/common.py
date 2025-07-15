@@ -14,7 +14,7 @@ router = Router()
 async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
     username = msg.from_user.username
     chat_id = msg.chat.id
-    label = service.get_user_label(username=username)
+    label = await service.get_user_label(username=username)
     # Обновляем chat_id для существующего пользователя
     success = await service.repo.update_user_chat_id(username, chat_id)
     if not success:
