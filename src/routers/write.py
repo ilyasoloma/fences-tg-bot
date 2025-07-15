@@ -166,7 +166,7 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
             return
 
         logger.info("Sent full message to %s from %s", data["recipient"], callback.from_user.username)
-        await callback.message.answer(config.MSG_MESSAGE_SENT)
+        await callback.message.edit_text(config.MSG_MESSAGE_SENT)
         await state.clear()
         await callback.message.answer(config.MSG_START,
                                       reply_markup=await main_menu(callback.from_user.username, service=service))

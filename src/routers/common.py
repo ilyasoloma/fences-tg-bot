@@ -14,7 +14,7 @@ router = Router()
 async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
     username = msg.from_user.username
     chat_id = msg.chat.id
-
+    label = service.get_user_label(username=username)
     # Обновляем chat_id для существующего пользователя
     success = await service.repo.update_user_chat_id(username, chat_id)
     if not success:
@@ -26,8 +26,7 @@ async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
     await state.clear()
     logger.info("User %s accessed main menu, chat_id %s", username, chat_id)
     await msg.answer("Привет!", reply_markup=main_menu_reply_keyboard())
-    await msg.answer(config.START_CMD, reply_markup=await main_menu(username, service=service))
-
+    await msg.answer(f"{label}, {config.START_CMD}", reply_markup=await main_menu(username, service=service))
 
 
 @router.callback_query(F.data == "back")
