@@ -24,7 +24,7 @@ async def select_recipient(callback: CallbackQuery, state: FSMContext, service: 
             return
         logger.info("User %s started writing process", callback.from_user.username)
         await callback.message.edit_text(config.MSG_SELECT_RECIPIENT,
-                                         reply_markup=await recipient_keyboard(service=service))
+                                         reply_markup=await recipient_keyboard(service, callback.from_user.username))
         await state.set_state(Wall.choosing_recipient)
         await callback.answer()
     except Exception as e:
