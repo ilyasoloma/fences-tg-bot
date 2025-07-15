@@ -8,7 +8,23 @@ load_dotenv()
 
 class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN")
-    MONGO_DB_URL = os.getenv("MONGO_DB_URL", "mongodb://localhost:27017")
+
+    # Получение учетных данных MongoDB
+    MONGO_INITDB_ROOT_USERNAME = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+    MONGO_INITDB_ROOT_PASSWORD = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+    MONGO_HOST = os.getenv("MONGO_HOST", "mongodb")
+    MONGO_PORT = os.getenv("MONGO_PORT", "27017")
+    MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "fences")
+
+    # Формирование MONGO_DB_URL с учетом учетных данных
+    if MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD:
+        MONGO_DB_URL = os.getenv("MONGO_DB_URL",
+                                 f"mongodb://{MONGO_INITDB_ROOT_USERNAME}:{MONGO_INITDB_ROOT_PASSWORD}"
+                                 f"@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB_NAME}?authSource=admin")
+    else:
+        error_msg = "Missing MONGO_INITDB_ROOT_USERNAME or MONGO_INITDB_ROOT_PASSWORD in .env"
+        raise IOError(error_msg)
+
     DATETIME_PATTERN = '%d.%m.%Y %H:%M:%S'
     EOL_DATETIME = os.getenv('EOL_DATETIME', None)
     if EOL_DATETIME is not None:
@@ -40,7 +56,7 @@ class Config:
     MSG_EOL_DATETIME_MSG = "⏳ Время действия бота истекло."
 
     # Нештатное поведение
-    MSG_ACCESS_DENIED = '🚫 Доступ запрещен! Кажется ты залез не в свой отряд'
+    ACCESS_DENIED = '🚫 Доступ запрещен! Кажется ты залез не в свой отряд'
     MSG_UNKNOWING_ERROR = "🧐 Либо я тебя не понял, либо что-то пошло не так. Имеет смысл сообщить админу\n"
     MSG_ERROR_EMPTY_TEXT = '⚠️Йоу, здесь допускается только текстовое сообщение. ' \
                            'Стикеры, аудио, и иной контент недопустим'

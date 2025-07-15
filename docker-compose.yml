@@ -16,7 +16,12 @@ services:
   mongodb:
     image: mongo:6.0
     environment:
-      - MONGO_INITDB_DATABASE=fences
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_DB_NAME=${MONGO_DB_NAME}
+      - MONGO_DB_URL=${MONGO_DB_URL}
     volumes:
       - mongodb_data:/data/db
     ports:
