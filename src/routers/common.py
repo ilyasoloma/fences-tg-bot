@@ -32,6 +32,8 @@ async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
 @router.callback_query(F.data == "back")
 async def back_main_menu(callback: CallbackQuery, state: FSMContext, service: FencesService):
     await state.clear()
-    await callback.message.edit_text(config.START_CMD,
+    username = callback.from_user.username
+    label, _ = await service.get_user_label(username=username)
+    await callback.message.edit_text(f"{label}, {config.START_CMD}",
                                      reply_markup=await main_menu(callback.from_user.username, service=service))
     await callback.answer()

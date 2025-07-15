@@ -16,11 +16,12 @@ router = Router()
 async def view_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
     try:
         username = callback.from_user.username
+        label, _ = await service.get_user_label(username=username)
         board = await service.get_messages_by_username(username)
         if not board:
             logger.info("User %s has no messages on their board", username)
             await callback.message.answer(config.MSG_EMPTY_BOARD)
-            await callback.message.answer(config.MSG_START, reply_markup=await main_menu(username, service=service))
+            await callback.message.answer(f"{label}, {config.START_CMD}", reply_markup=await main_menu(username, service=service))
             await state.clear()
             return
 
@@ -66,11 +67,13 @@ async def show_board_message(callback: CallbackQuery, state: FSMContext, service
 async def download_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
     try:
         username = callback.from_user.username
+        label, _ = await service.get_user_label(username=username)
         board = await service.get_messages_by_username(username)
         if not board:
             logger.info("User %s has no messages to download", username)
             await callback.message.answer(config.MSG_EMPTY_BOARD)
-            await callback.message.answer(config.MSG_START, reply_markup=await main_menu(username, service=service))
+            await callback.message.answer(f'{label}, {config.MSG_START}',
+                                          reply_markup=await main_menu(username, service=service))
             await state.clear()
             return
 

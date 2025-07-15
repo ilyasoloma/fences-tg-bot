@@ -166,9 +166,10 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
             return
 
         logger.info("Sent full message to %s from %s", data["recipient"], callback.from_user.username)
+        label, _ = await service.get_user_label(username=callback.from_user.username)
         await callback.message.edit_text(config.MSG_MESSAGE_SENT)
         await state.clear()
-        await callback.message.answer(config.MSG_START,
+        await callback.message.answer(f'{label}, {config.MSG_START}',
                                       reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
     except Exception as e:
@@ -195,6 +196,7 @@ async def back_to_typing(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(Wall.typing_message, F.data == "try_cancel")
 async def cancel_sending_messages_confirm(callback: CallbackQuery, state: FSMContext, service: FencesService):
     await state.clear()
-    await callback.message.edit_text(config.MSG_START, reply_markup=await main_menu(callback.from_user.username,
-                                                                                    service=service))
+    label, _ = await service.get_user_label(username=callback.from_user.username)
+    await callback.message.edit_text(f'{label}, {config.MSG_START}',
+                                     reply_markup=await main_menu(callback.from_user.username, service=service))
     await callback.answer()
