@@ -22,6 +22,7 @@ services:
       - MONGO_PORT=${MONGO_PORT}
       - MONGO_DB_NAME=${MONGO_DB_NAME}
       - MONGO_DB_URL=${MONGO_DB_URL}
+      - TZ=${TZ}
     volumes:
       - mongodb_data:/data/db
     ports:
