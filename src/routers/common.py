@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from src.config import config
+from src.lexicon import lexicon
 from src.keyboards.general_keyboards import main_menu, main_menu_reply_keyboard
 from src.services import FencesService
 from src.utils.logger import logger
@@ -26,7 +26,7 @@ async def start_cmd(msg: Message, service: FencesService, state: FSMContext):
     await state.clear()
     logger.info("User %s accessed main menu, chat_id %s", username, chat_id)
     await msg.answer("Привет!", reply_markup=main_menu_reply_keyboard())
-    await msg.answer(f"{label}, {config.START_CMD}", reply_markup=await main_menu(username, service=service))
+    await msg.answer(f"{label}, {lexicon.START_CMD}", reply_markup=await main_menu(username, service=service))
 
 
 @router.callback_query(F.data == "back")
@@ -34,6 +34,6 @@ async def back_main_menu(callback: CallbackQuery, state: FSMContext, service: Fe
     await state.clear()
     username = callback.from_user.username
     label, _ = await service.get_user_label(username=username)
-    await callback.message.edit_text(f"{label}, {config.START_CMD}",
+    await callback.message.edit_text(f"{label}, {lexicon.START_CMD}",
                                      reply_markup=await main_menu(callback.from_user.username, service=service))
     await callback.answer()

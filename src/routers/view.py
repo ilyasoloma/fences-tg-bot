@@ -2,9 +2,9 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, BufferedInputFile
 
-from src.config import config
 from src.keyboards.general_keyboards import main_menu
 from src.keyboards.view_keyboards import user_messages_keyboard, back_to_board_keyboard
+from src.lexicon import lexicon
 from src.services import FencesService
 from src.utils.logger import logger
 from src.utils.static import prepared_msg_file
@@ -20,18 +20,19 @@ async def view_messages(callback: CallbackQuery, state: FSMContext, service: Fen
         board = await service.get_messages_by_username(username)
         if not board:
             logger.info("User %s has no messages on their board", username)
-            await callback.message.answer(config.MSG_EMPTY_BOARD)
-            await callback.message.answer(f"{label}, {config.START_CMD}", reply_markup=await main_menu(username, service=service))
+            await callback.message.answer(lexicon.MSG_EMPTY_BOARD)
+            await callback.message.answer(f"{label}, {lexicon.START_CMD}",
+                                          reply_markup=await main_menu(username, service=service))
             await state.clear()
             return
 
         logger.info("User %s viewed their message board", username)
-        await callback.message.edit_text(config.MSG_NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
+        await callback.message.edit_text(lexicon.MSG_NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
         await callback.answer()
     except Exception as e:
         logger.error("Error in view_messages for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -47,18 +48,18 @@ async def show_board_message(callback: CallbackQuery, state: FSMContext, service
             logger.warning("Message not found for alias %s by user %s", alias, username)
             await callback.message.answer("❌ Сообщение не найдено.")
             await state.clear()
-            await callback.message.answer(config.MSG_START, reply_markup=await main_menu(username, service=service))
+            await callback.message.answer(lexicon.MSG_START, reply_markup=await main_menu(username, service=service))
             return
 
         for chunk in board[alias]:
             await callback.message.answer(chunk)
 
-        await callback.message.answer(f"{config.MSG_EOL_BOARD} {alias}", reply_markup=back_to_board_keyboard())
+        await callback.message.answer(f"{lexicon.MSG_EOL_BOARD} {alias}", reply_markup=back_to_board_keyboard())
         await callback.answer()
     except Exception as e:
         logger.error("Error in show_board_message for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -71,8 +72,8 @@ async def download_messages(callback: CallbackQuery, state: FSMContext, service:
         board = await service.get_messages_by_username(username)
         if not board:
             logger.info("User %s has no messages to download", username)
-            await callback.message.answer(config.MSG_EMPTY_BOARD)
-            await callback.message.answer(f'{label}, {config.MSG_START}',
+            await callback.message.answer(lexicon.MSG_EMPTY_BOARD)
+            await callback.message.answer(f'{label}, {lexicon.MSG_START}',
                                           reply_markup=await main_menu(username, service=service))
             await state.clear()
             return
@@ -86,11 +87,11 @@ async def download_messages(callback: CallbackQuery, state: FSMContext, service:
         file_content.close()
         logger.info("User %s downloaded messages file", username)
 
-        await callback.message.answer(config.MSG_NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
+        await callback.message.answer(lexicon.MSG_NO_EMPTY_BOARD, reply_markup=await user_messages_keyboard(board))
         await callback.answer()
     except Exception as e:
         logger.error("Error in download_messages for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.answer(config.MSG_UNKNOWING_ERROR,
+        await callback.message.answer(lexicon.MSG_UNKNOWING_ERROR,
                                       reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()

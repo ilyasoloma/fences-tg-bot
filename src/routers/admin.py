@@ -2,10 +2,10 @@ from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from src.config import config
 from src.keyboards.admin_keyboards import choose_user_to_remove_keyboard, bot_message_type_keyboard, \
     bot_message_recipient_keyboard, admin_panel_keyboard
 from src.keyboards.general_keyboards import main_menu, message_keyboard, cancel_sending_keyboard
+from src.lexicon import lexicon
 from src.services import FencesService
 from src.states import AdminState
 from src.utils.logger import logger
@@ -19,17 +19,17 @@ async def admin_panel(callback: CallbackQuery, state: FSMContext, service: Fence
     try:
         if not await service.is_admin(callback.from_user.username):
             logger.warning("User %s attempted to access admin panel without permission", callback.from_user.username)
-            await callback.message.answer("❌ У вас нет прав администратора.")
+            await callback.message.answer(lexicon.NO_ADMIN_RIGHT)
             await callback.answer()
             return
 
-        await callback.message.edit_text(config.MSG_MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboard())
+        await callback.message.edit_text(lexicon.MSG_MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboard())
         await state.set_state(AdminState.choosing_action)
         await callback.answer()
     except Exception as e:
         logger.error("Error in admin_panel for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -37,13 +37,13 @@ async def admin_panel(callback: CallbackQuery, state: FSMContext, service: Fence
 @router.callback_query(AdminState.choosing_action, F.data == "admin_add")
 async def ask_username(callback: CallbackQuery, state: FSMContext, service: FencesService):
     try:
-        await callback.message.edit_text(config.MSG_ENTER_ADD_USERNAME)
+        await callback.message.edit_text(lexicon.MSG_ENTER_ADD_USERNAME)
         await state.set_state(AdminState.adding_username)
         await callback.answer()
     except Exception as e:
         logger.error("Error in ask_username for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -52,19 +52,19 @@ async def ask_username(callback: CallbackQuery, state: FSMContext, service: Fenc
 async def ask_alias(msg: Message, state: FSMContext, service: FencesService):
     try:
         await state.update_data(username=msg.text.strip())
-        await msg.answer(config.MSG_ENTER_ADD_ALIAS)
+        await msg.answer(lexicon.MSG_ENTER_ADD_ALIAS)
         await state.set_state(AdminState.adding_label)
     except Exception as e:
         logger.error("Error in ask_alias for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
 @router.message(AdminState.adding_label)
 async def save_new_user(msg: Message, state: FSMContext, service: FencesService):
     try:
-        await msg.answer(config.MSG_ADDING_USER)
+        await msg.answer(lexicon.MSG_ADDING_USER)
         data = await state.get_data()
         username = data["username"]
         label = msg.text.strip()
@@ -72,13 +72,13 @@ async def save_new_user(msg: Message, state: FSMContext, service: FencesService)
         valid, error = validate_alias(label)
         if not valid:
             await msg.answer(f"⚠️ {error}")
-            await msg.answer(config.MSG_ENTER_ADD_ALIAS)
+            await msg.answer(lexicon.MSG_ENTER_ADD_ALIAS)
             return
 
         success, err = await service.add_user(username, label, role='member')
         if not success:
             await msg.answer(f"⚠️ {err}")
-            await msg.answer(config.MSG_ENTER_ADD_ALIAS)
+            await msg.answer(lexicon.MSG_ENTER_ADD_ALIAS)
             return
 
         await msg.answer(f"✅ Пользователь @{username} добавлен", reply_markup=admin_panel_keyboard())
@@ -86,7 +86,7 @@ async def save_new_user(msg: Message, state: FSMContext, service: FencesService)
     except Exception as e:
         logger.error("Error in save_new_user for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
@@ -101,18 +101,18 @@ async def list_users_to_remove(callback: CallbackQuery, state: FSMContext, servi
             return
 
         if not users:
-            await callback.message.edit_text("❌ Нет участников для удаления", reply_markup=admin_panel_keyboard())
+            await callback.message.edit_text(lexicon.MSG_NO_REMOVE_MEMBER, reply_markup=admin_panel_keyboard())
             await state.set_state(AdminState.choosing_action)
             return
 
-        await callback.message.edit_text("Выберите пользователя для удаления:",
+        await callback.message.edit_text(lexicon.MSG_SELECT_REMOVED_USER,
                                          reply_markup=await choose_user_to_remove_keyboard(service, role='all'))
         await state.set_state(AdminState.removing_user)
         await callback.answer()
     except Exception as e:
         logger.error("Error in list_users_to_remove for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -134,7 +134,7 @@ async def confirm_user_removal(callback: CallbackQuery, state: FSMContext, servi
     except Exception as e:
         logger.error("Error in confirm_user_removal for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -150,18 +150,18 @@ async def list_users_to_add_root(callback: CallbackQuery, state: FSMContext, ser
             return
 
         if not users:
-            await callback.message.edit_text("❌ Все пользователи уже админы", reply_markup=admin_panel_keyboard())
+            await callback.message.edit_text(lexicon.MSG_ALL_ADMIN, reply_markup=admin_panel_keyboard())
             await state.set_state(AdminState.choosing_action)
             return
 
-        await callback.message.edit_text("Выберите будущего админа",
+        await callback.message.edit_text(lexicon.MSG_SELECT_FUTURE_ADMIN,
                                          reply_markup=await choose_user_to_remove_keyboard(service, role='member'))
         await state.set_state(AdminState.add_root)
         await callback.answer()
     except Exception as e:
         logger.error("Error in list_users_to_add_root for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -181,14 +181,14 @@ async def list_users_to_remove_root(callback: CallbackQuery, state: FSMContext, 
             await state.set_state(AdminState.choosing_action)
             return
 
-        await callback.message.edit_text("Выберите бывшего админа",
+        await callback.message.edit_text(lexicon.MSG_NO_ADMIN,
                                          reply_markup=await choose_user_to_remove_keyboard(service, role='admin'))
         await state.set_state(AdminState.delete_root)
         await callback.answer()
     except Exception as e:
         logger.error("Error in list_users_to_remove_root for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -210,7 +210,7 @@ async def confirm_user_root(callback: CallbackQuery, state: FSMContext, service:
     except Exception as e:
         logger.error("Error in confirm_user_root for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -232,7 +232,7 @@ async def delete_user_root(callback: CallbackQuery, state: FSMContext, service: 
     except Exception as e:
         logger.error("Error in delete_user_root for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -240,13 +240,13 @@ async def delete_user_root(callback: CallbackQuery, state: FSMContext, service: 
 @router.callback_query(F.data == 'set_datetime')
 async def set_datetime_handler(callback: CallbackQuery, state: FSMContext, service: FencesService):
     try:
-        await callback.message.edit_text(config.MSG_SET_DATETIME)
+        await callback.message.edit_text(lexicon.MSG_SET_DATETIME)
         await state.set_state(AdminState.set_datetime)
         await callback.answer()
     except Exception as e:
         logger.error("Error in set_datetime_handler for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -254,11 +254,11 @@ async def set_datetime_handler(callback: CallbackQuery, state: FSMContext, servi
 @router.message(AdminState.set_datetime)
 async def success_set_datetime(msg: Message, state: FSMContext, service: FencesService):
     try:
-        await msg.answer('Применение...')
+        await msg.answer(lexicon.MSG_APPLY)
         success, error = await service.set_datetime(msg.text)
         if not success:
             await msg.answer(f"⚠️ {error}")
-            await msg.answer(config.MSG_SET_DATETIME)
+            await msg.answer(lexicon.MSG_SET_DATETIME)
             return
 
         await msg.answer(f'Время действия бота изменено на: {msg.text}', reply_markup=admin_panel_keyboard())
@@ -266,7 +266,7 @@ async def success_set_datetime(msg: Message, state: FSMContext, service: FencesS
     except Exception as e:
         logger.error("Error in success_set_datetime for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
@@ -275,17 +275,17 @@ async def choose_bot_message_type(callback: CallbackQuery, state: FSMContext, se
     try:
         if not await service.is_admin(callback.from_user.username):
             logger.warning("User %s attempted to send bot message without permission", callback.from_user.username)
-            await callback.message.answer("❌ У вас нет прав администратора.")
+            await callback.message.answer(lexicon.NO_ADMIN_RIGHT)
             await callback.answer()
             return
 
-        await callback.message.edit_text("Кому отправить сообщение от бота?", reply_markup=bot_message_type_keyboard())
+        await callback.message.edit_text(lexicon.MSG_WHY_SEND_MESSAGE, reply_markup=bot_message_type_keyboard())
         await state.set_state(AdminState.bot_message_type)
         await callback.answer()
     except Exception as e:
         logger.error("Error in choose_bot_message_type for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -293,7 +293,7 @@ async def choose_bot_message_type(callback: CallbackQuery, state: FSMContext, se
 @router.callback_query(AdminState.bot_message_type, F.data == "bot_message_all")
 async def bot_message_all(callback: CallbackQuery, state: FSMContext, service: FencesService):
     try:
-        await callback.message.edit_text("Введите сообщение (текст, фото, видео, стикер и т.д.):",
+        await callback.message.edit_text(lexicon.MSG_ENTRY_MESSAGE_FROM_BOT,
                                          reply_markup=message_keyboard())
         await state.set_state(AdminState.bot_message_typing)
         await state.update_data(bot_recipient=None, bot_messages=[])
@@ -301,7 +301,7 @@ async def bot_message_all(callback: CallbackQuery, state: FSMContext, service: F
     except Exception as e:
         logger.error("Error in bot_message_all for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -317,7 +317,7 @@ async def choose_bot_message_recipient(callback: CallbackQuery, state: FSMContex
             return
 
         if not contacts:
-            await callback.message.edit_text("❌ Нет пользователей для отправки сообщения.",
+            await callback.message.edit_text(lexicon.MSG_NO_MEMBER_TO_SEND,
                                              reply_markup=admin_panel_keyboard())
             await state.set_state(AdminState.choosing_action)
             return
@@ -329,7 +329,7 @@ async def choose_bot_message_recipient(callback: CallbackQuery, state: FSMContex
     except Exception as e:
         logger.error("Error in choose_bot_message_recipient for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -361,7 +361,7 @@ async def bot_message_single(callback: CallbackQuery, state: FSMContext, service
     except Exception as e:
         logger.error("Error in bot_message_single for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -402,7 +402,7 @@ async def collect_bot_message(msg: Message, state: FSMContext, service: FencesSe
     except Exception as e:
         logger.error("Error in collect_bot_message for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
@@ -434,14 +434,14 @@ async def send_bot_direct_message(callback: CallbackQuery, state: FSMContext, se
     except Exception as e:
         logger.error("Error in send_bot_direct_message for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
 
 @router.callback_query(AdminState.bot_message_typing, F.data == "cancel")
 async def cancel_sending_messages(callback: CallbackQuery):
-    await callback.message.answer(config.MSG_WARNING_LEAVE, reply_markup=cancel_sending_keyboard())
+    await callback.message.answer(lexicon.MSG_WARNING_LEAVE, reply_markup=cancel_sending_keyboard())
     await callback.answer()
 
 
@@ -459,5 +459,5 @@ async def back_to_typing(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(AdminState.bot_message_typing, F.data == "try_cancel")
 async def confirm_cancel_sending_messages(callback: CallbackQuery, state: FSMContext, service: FencesService):
     await state.clear()
-    await callback.message.edit_text(config.MSG_MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboard())
+    await callback.message.edit_text(lexicon.MSG_MAIN_CONTROL_PANEL, reply_markup=admin_panel_keyboard())
     await state.set_state(AdminState.choosing_action)

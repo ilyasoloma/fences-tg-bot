@@ -2,9 +2,9 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from src.config import config
 from src.keyboards.general_keyboards import main_menu, message_keyboard, cancel_sending_keyboard
 from src.keyboards.write_keyboards import recipient_keyboard, entry_alias_keyboard, back_keyboard
+from src.lexicon import lexicon
 from src.services import FencesService
 from src.states import Wall
 from src.utils.logger import logger
@@ -18,19 +18,19 @@ async def select_recipient(callback: CallbackQuery, state: FSMContext, service: 
     try:
         if service.is_expired():
             logger.info("User %s attempted to write, but bot is expired", callback.from_user.username)
-            await callback.message.edit_text(config.MSG_EOL_DATETIME,
+            await callback.message.edit_text(lexicon.MSG_EOL_DATETIME,
                                              reply_markup=await main_menu(callback.from_user.username, service=service))
             await callback.answer()
             return
         logger.info("User %s started writing process", callback.from_user.username)
-        await callback.message.edit_text(config.MSG_SELECT_RECIPIENT,
+        await callback.message.edit_text(lexicon.MSG_SELECT_RECIPIENT,
                                          reply_markup=await recipient_keyboard(service, callback.from_user.username))
         await state.set_state(Wall.choosing_recipient)
         await callback.answer()
     except Exception as e:
         logger.error("Error in select_recipient for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -40,12 +40,12 @@ async def enter_alias(callback: CallbackQuery, state: FSMContext, service: Fence
     try:
         await state.update_data(recipient=callback.data)
         await state.set_state(Wall.entering_alias)
-        await callback.message.edit_text(config.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
+        await callback.message.edit_text(lexicon.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
         await callback.answer()
     except Exception as e:
         logger.error("Error in enter_alias for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -74,13 +74,13 @@ async def use_label_as_alias(callback: CallbackQuery, state: FSMContext, service
 
         await state.update_data(alias=label)
         await state.set_state(Wall.typing_message)
-        await callback.message.edit_text(config.MSG_ENTER_MESSAGE, reply_markup=back_keyboard())
+        await callback.message.edit_text(lexicon.MSG_ENTER_MESSAGE, reply_markup=back_keyboard())
         logger.info("User %s used label '%s' as alias for recipient %s", username, label, recipient_label)
         await callback.answer()
     except Exception as e:
         logger.error("Error in use_label_as_alias for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.edit_text(config.MSG_UNKNOWING_ERROR,
+        await callback.message.edit_text(lexicon.MSG_UNKNOWING_ERROR,
                                          reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
@@ -89,8 +89,8 @@ async def use_label_as_alias(callback: CallbackQuery, state: FSMContext, service
 async def enter_message(msg: Message, state: FSMContext, service: FencesService):
     try:
         if msg.text is None:
-            await msg.answer(config.MSG_ERROR_EMPTY_TEXT)
-            await msg.answer(config.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
+            await msg.answer(lexicon.MSG_ERROR_EMPTY_TEXT)
+            await msg.answer(lexicon.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
             logger.warning("Invalid alias content from user %s", msg.from_user.username)
             return
 
@@ -98,7 +98,7 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
         valid, error = validate_alias(slug)
         if not valid:
             await msg.answer(f"⚠️ {error}")
-            await msg.answer(config.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
+            await msg.answer(lexicon.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
             logger.warning("Invalid slug: %s from user %s", error, msg.from_user.username)
             return
 
@@ -107,17 +107,17 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
         is_unique, unique_error = await service.check_alias_unique(recipient_label, slug)
         if not is_unique:
             await msg.answer(f"⚠️ {unique_error}\n\nПожалуйста, введите другой псевдоним.")
-            await msg.answer(config.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
+            await msg.answer(lexicon.MSG_WRITE_ALIAS, reply_markup=entry_alias_keyboard())
             logger.warning("Duplicate alias: %s for recipient %s", slug, recipient_label)
             return
 
         await state.update_data(alias=msg.text)
         await state.set_state(Wall.typing_message)
-        await msg.answer(config.MSG_ENTER_MESSAGE, reply_markup=back_keyboard())
+        await msg.answer(lexicon.MSG_ENTER_MESSAGE, reply_markup=back_keyboard())
     except Exception as e:
         logger.error("Error in enter_message for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
@@ -125,8 +125,8 @@ async def enter_message(msg: Message, state: FSMContext, service: FencesService)
 async def collect_text(msg: Message, state: FSMContext, service: FencesService):
     try:
         if msg.text is None:
-            await msg.answer(config.MSG_ERROR_EMPTY_TEXT)
-            await msg.answer(config.MSG_ENTER_MESSAGE, reply_markup=message_keyboard())
+            await msg.answer(lexicon.MSG_ERROR_EMPTY_TEXT)
+            await msg.answer(lexicon.MSG_ENTER_MESSAGE, reply_markup=message_keyboard())
             logger.warning("Invalid message content from user %s", msg.from_user.username)
             return
 
@@ -134,11 +134,11 @@ async def collect_text(msg: Message, state: FSMContext, service: FencesService):
         messages = data.get("messages", [])
         messages.append(msg.text)
         await state.update_data(messages=messages)
-        await msg.answer(config.MSG_ADDED_CHUNK, reply_markup=message_keyboard())
+        await msg.answer(lexicon.MSG_ADDED_CHUNK, reply_markup=message_keyboard())
     except Exception as e:
         logger.error("Error in collect_text for user %s: %s", msg.from_user.username, str(e))
         await state.clear()
-        await msg.answer(config.MSG_UNKNOWING_ERROR,
+        await msg.answer(lexicon.MSG_UNKNOWING_ERROR,
                          reply_markup=await main_menu(msg.from_user.username, service=service))
 
 
@@ -149,7 +149,7 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
         parts = data.get("messages", [])
 
         if not parts:
-            await callback.message.answer(config.MSG_EMPTY_MESSAGE)
+            await callback.message.answer(lexicon.MSG_EMPTY_MESSAGE)
             await callback.answer()
             return
 
@@ -167,28 +167,28 @@ async def save_messages(callback: CallbackQuery, state: FSMContext, service: Fen
 
         logger.info("Sent full message to %s from %s", data["recipient"], callback.from_user.username)
         label, _ = await service.get_user_label(username=callback.from_user.username)
-        await callback.message.edit_text(config.MSG_MESSAGE_SENT)
+        await callback.message.edit_text(lexicon.MSG_MESSAGE_SENT)
         await state.clear()
-        await callback.message.answer(f'{label}, {config.MSG_START}',
+        await callback.message.answer(f'{label}, {lexicon.MSG_START}',
                                       reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
     except Exception as e:
         logger.error("Error in save_messages for user %s: %s", callback.from_user.username, str(e))
         await state.clear()
-        await callback.message.answer(config.MSG_UNKNOWING_ERROR,
+        await callback.message.answer(lexicon.MSG_UNKNOWING_ERROR,
                                       reply_markup=await main_menu(callback.from_user.username, service=service))
         await callback.answer()
 
 
 @router.callback_query(Wall.typing_message, F.data == "cancel")
 async def cancel_sending_messages(callback: CallbackQuery):
-    await callback.message.answer(config.MSG_WARNING_LEAVE, reply_markup=cancel_sending_keyboard())
+    await callback.message.answer(lexicon.MSG_WARNING_LEAVE, reply_markup=cancel_sending_keyboard())
     await callback.answer()
 
 
 @router.callback_query(Wall.typing_message, F.data == "collect_msg")
 async def back_to_typing(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer(config.MSG_ENTER_MESSAGE, reply_markup=message_keyboard())
+    await callback.message.answer(lexicon.MSG_ENTER_MESSAGE, reply_markup=message_keyboard())
     await state.set_state(Wall.typing_message)
     await callback.answer()
 
@@ -197,6 +197,6 @@ async def back_to_typing(callback: CallbackQuery, state: FSMContext):
 async def cancel_sending_messages_confirm(callback: CallbackQuery, state: FSMContext, service: FencesService):
     await state.clear()
     label, _ = await service.get_user_label(username=callback.from_user.username)
-    await callback.message.edit_text(f'{label}, {config.MSG_START}',
+    await callback.message.edit_text(f'{label}, {lexicon.MSG_START}',
                                      reply_markup=await main_menu(callback.from_user.username, service=service))
     await callback.answer()
